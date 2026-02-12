@@ -212,18 +212,28 @@ async def _handle_chat(
     # Get messages for LLM
     messages = session.context.get_messages_for_llm()
 
-    # Left-border prefix for response lines (subtle visual container)
-    border = "  [dim]│[/dim] "
+    # Stream response inside a bordered panel using Rich Live display
+    from rich.live import Live
+    from rich.markdown import Markdown
 
-    # Stream response with left-border styling
     console.print()
     full_response: list[str] = []
-    first_token = True
+    error_occurred = False
 
     max_tokens = session.llm_client.max_output_tokens
 
-    status = console.status("[dim]Thinking...[/dim]", spinner="dots")
-    status.start()
+    # Start with a "Thinking..." panel
+    live = Live(
+        Panel(
+            "[dim]Thinking...[/dim]",
+            border_style="dim",
+            padding=(0, 2),
+        ),
+        console=console,
+        refresh_per_second=8,
+        vertical_overflow="visible",
+    )
+    live.start()
 
     try:
         async for chunk in session.llm_client.stream(
@@ -233,35 +243,41 @@ async def _handle_chat(
             temperature=0.7,
         ):
             if chunk.content:
-                if first_token:
-                    status.stop()
-                    first_token = False
-                    console.print(border, end="")
-
-                # Stream with left border on each new line
-                lines = chunk.content.split("\n")
-                for i, line in enumerate(lines):
-                    if i > 0:
-                        console.print()
-                        console.print(border, end="")
-                    if line:
-                        console.print(line, end="", highlight=False)
-
                 full_response.append(chunk.content)
+                text = "".join(full_response)
+                live.update(Panel(
+                    text,
+                    border_style="dim",
+                    padding=(0, 2),
+                ))
 
     except Exception as e:
-        console.print(f"\n[red]Error getting response: {e}[/red]")
-        console.print("[dim]This may be a network issue or API rate limit. Try again.[/dim]")
+        error_occurred = True
+        live.update(Panel(
+            f"[red]Error: {e}[/red]\n"
+            "[dim]This may be a network issue or API rate limit. Try again.[/dim]",
+            border_style="red",
+            padding=(0, 2),
+        ))
     finally:
-        # Always clean up spinner, regardless of how we exited
-        if first_token:
-            status.stop()
+        # Final render with Markdown formatting for a polished look
+        response_text = "".join(full_response)
+        if response_text and not error_occurred:
+            try:
+                live.update(Panel(
+                    Markdown(response_text),
+                    border_style="dim",
+                    padding=(1, 2),
+                ))
+            except Exception:
+                pass  # Keep the plain text panel if Markdown fails
+        live.stop()
 
-    console.print()  # End last response line
-    console.print()  # Breathing room after response
+    # Breathing room after response panel
+    console.print()
+    console.print()
 
     # Add assistant response to context
-    response_text = "".join(full_response)
     if response_text:
         session.context.add_assistant_message(response_text)
 

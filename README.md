@@ -15,7 +15,7 @@
   <a href="#quick-start">Quick Start</a> &middot;
   <a href="#commands">Commands</a> &middot;
   <a href="#configuration">Configuration</a> &middot;
-  <a href="docs/STRUCTURE.md">Project Structure</a>
+  <a href="docs/ARCHITECTURE.md">Architecture</a>
 </p>
 
 <p align="center">
@@ -376,61 +376,6 @@ Use formal academic English. Every claim must be backed by evidence.
 
 Plus any model from [openrouter.ai/models](https://openrouter.ai/models).
 
-## Architecture
-
-```
-User Input
-    │
-    ├─ /command args ──────> CommandRegistry.get_command()
-    │                              │
-    │                         Command.execute()
-    │                              │
-    │                    ┌─────────┴──────────┐
-    │                    │                    │
-    │               Verify Only          LLM Pipeline
-    │               (parse .tex,         (build prompt →
-    │                run checks)          stream_llm() →
-    │                    │                extract patches →
-    │                    │                interactive_approval())
-    │                    │                    │
-    │                    └─────────┬──────────┘
-    │                              │
-    │                    Show results / Apply patches
-    │                    Create checkpoint
-    │
-    └─ natural language ──> ConversationContext
-                                   │
-                              build_chat_system_prompt()
-                                   │
-                              stream_llm()
-                                   │
-                              Extract patches if any
-                              Offer to apply
-```
-
-### Safety Guarantees
-
-- **Allowlist/Denylist**: Only whitelisted file types can be modified
-- **Max changed lines**: Patches exceeding the limit are rejected
-- **Checkpoints**: Created before every patch application
-- **Human review markers**: Changes to abstract, large deletions flagged
-- **Max iterations**: Auto-fix loops capped to prevent runaway
-- **Rollback**: `/revert` restores any checkpoint instantly
-
-## Visual Verification Pipeline
-
-The `/polish_visual` command renders your PDF and sends pages to a vision model:
-
-```
-.tex ──> latexmk ──> .pdf ──> pdftoppm ──> .png ──> Vision LLM ──> patches
-                                             │
-                                    Pixel diff with previous ──> converged?
-                                             │
-                                    Loop until visual quality stable
-```
-
-This catches layout issues that text-only analysis misses: overlapping figures, bad spacing, misaligned columns, orphaned headers.
-
 ## Development
 
 ```bash
@@ -447,7 +392,7 @@ ruff check src/
 mypy src/texguardian
 ```
 
-See [docs/STRUCTURE.md](docs/STRUCTURE.md) for the full project layout.
+See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the full architecture and project layout.
 
 ## License
 

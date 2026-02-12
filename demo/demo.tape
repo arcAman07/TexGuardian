@@ -29,7 +29,12 @@ Type "texguardian chat"
 Enter
 Sleep 4s
 
-# 2. Run the full 7-step review pipeline — the centerpiece
+# 2. Set venue with natural language — downloads ICLR template files
+Type "/venue let's use the ICLR template file for our paper"
+Enter
+Sleep 10s
+
+# 3. Run the full 7-step review pipeline
 Type "/review full"
 Enter
 Sleep 15s
@@ -52,12 +57,12 @@ Type "a"
 Enter
 Sleep 10s
 
-# 3. Open the fixed PDF
+# Show the final result
 Type "/bash open build/demo_paper.pdf"
 Enter
 Sleep 3s
 
-# 4. Exit
+# Exit
 Type "/exit"
 Enter
 Sleep 2s

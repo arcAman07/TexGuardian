@@ -1,4 +1,4 @@
-# TexGuardian Demo Recording Script
+# TexGuardian Demo Recording Script (~1 minute)
 
 ## Pre-recording Setup
 
@@ -17,18 +17,18 @@ export AWS_REGION="us-east-1"
 
 ## Recording Options
 
-### Option A: VHS (automated terminal GIF/MP4) — recommended
+### Option A: macOS screen recording (recommended for 1-min demo)
+
+```
+Cmd+Shift+5 → select terminal window → Start Recording
+```
+
+### Option B: VHS (automated terminal GIF/MP4)
 
 ```bash
 cd demo/
 vhs demo.tape
 # Produces demo.gif and demo.mp4
-```
-
-### Option B: macOS screen recording
-
-```
-Cmd+Shift+5 → select terminal window → Start Recording
 ```
 
 ### Option C: asciinema
@@ -38,55 +38,31 @@ brew install asciinema
 cd demo/test_run
 asciinema rec ../demo.cast -c "texguardian chat"
 # Ctrl+D to stop
-
-# Convert to GIF:
-# agg ../demo.cast ../demo.gif --theme monokai
 ```
 
 ---
 
-## Demo Commands
+## 1-Minute Demo Commands
 
 Run these in order inside `demo/test_run/`.
 
-### 1. Doctor check (optional, quick)
-
-```bash
-texguardian doctor
-```
-
-Shows all 4 external tools found. Confirms installation works.
-
-### 2. Start chat
+### 1. Start chat
 
 ```bash
 texguardian chat
 ```
 
-Welcome panel appears with:
-- Paper: "Scaling Sparse Mixture-of-Experts for Long-Context..."
-- Venue: ICLR 2026, Deadline: 2026-01-23
-- Model: claude opus 4.5, Provider: bedrock
-- File: demo_paper.tex, Figures 2, Tables 3
+Welcome panel appears with paper stats (title, venue, model, figures, tables).
 
-### 3. Verify — show all issues
+### 2. Set venue — download ICLR 2025 style files
 
 ```
-/verify
+/venue ICLR 2025
 ```
 
-Outputs a table with 6 checks:
+Downloads `iclr2025_conference.sty` and related files to the project directory.
 
-| Check | Status | Issue |
-|-------|--------|-------|
-| citations | FAIL | 15 citations, 4 undefined |
-| figure_references | WARN | 2 unreferenced figures |
-| citation_format | WARN | Uses \cite{} instead of \citep{} |
-| todo_remaining | FAIL | TODO/FIXME/XXX markers found |
-| figure_overflow | FAIL | width=1.5\columnwidth overflows |
-| hline_usage | WARN | \hline instead of booktabs |
-
-### 4. Fix figures
+### 3. Fix figures
 
 ```
 /figures fix
@@ -94,51 +70,37 @@ Outputs a table with 6 checks:
 
 LLM analyzes figures, generates patches:
 - `width=1.5\columnwidth` → `width=\columnwidth`
-- Fixes `\hspace{-1cm}` architecture diagram overflow
+- Fixes overflow issues
 
 When prompted: type **`a`** to apply all patches.
 
-### 5. Fix tables
+### 4. Fix tables
 
 ```
 /tables fix
 ```
 
-LLM replaces all `\hline` with booktabs (`\toprule`, `\midrule`, `\bottomrule`), fixes overflowing column layouts.
+LLM replaces `\hline` with booktabs (`\toprule`, `\midrule`, `\bottomrule`).
 
 When prompted: type **`a`** to apply.
 
-### 6. Natural language — remove TODOs
+### 5. Compile — build the final PDF
 
 ```
-Please remove all TODO, FIXME, and XXX comments from the paper
+/compile
 ```
 
-LLM generates diff patches removing the 3 comment markers.
+Runs `latexmk -pdf` to produce the fixed `demo_paper.pdf`.
 
-When prompted: type **`a`** to apply.
-
-### 7. Re-verify — show fixes
+### 6. Open the PDF
 
 ```
-/verify
+/bash open build/demo_paper.pdf
 ```
 
-Shows reduced errors — figures fixed, tables fixed, TODOs removed.
+Opens the compiled PDF in Preview — the audience sees the polished result.
 
-### 8. Feedback — full paper review
-
-```
-/feedback
-```
-
-Comprehensive AI review with:
-- Overall score (out of 100)
-- 13 category scores (novelty, clarity, experiments, etc.)
-- Acceptance prediction
-- Top strengths and weaknesses
-
-### 9. Exit
+### 7. Exit
 
 ```
 /exit
@@ -146,16 +108,17 @@ Comprehensive AI review with:
 
 ---
 
-## Short Demo (3 minutes)
+## Extended Demo (3 minutes)
 
-If time is limited, just run:
+If you have more time, add these after step 4:
 
 ```
-texguardian chat
-/verify                    # show all 6 issues
-/figures fix               # approve with 'a'
-/tables fix                # approve with 'a'
-/verify                    # show issues reduced
+/verify                                          # show all issues
+Please remove all TODO, FIXME, and XXX comments  # natural language
+# approve with 'a'
+/feedback                                        # full AI review with scores
+/compile                                         # build final PDF
+/bash open build/demo_paper.pdf                  # show result
 /exit
 ```
 
@@ -164,10 +127,8 @@ texguardian chat
 ## Key Points to Highlight
 
 1. **Welcome panel** — paper metadata at a glance, no setup needed
-2. **`/verify` runs instantly** — regex-based, no compilation step
+2. **`/venue`** — downloads conference style files in one command
 3. **Diff patches before apply** — `[A]pply all | [R]eview | [N]o` prompt
 4. **Checkpoints** — created automatically before every patch
-5. **Natural language** — "remove TODOs", "fix the abstract", etc.
-6. **26 slash commands** — covers the entire paper lifecycle
-7. **`/feedback`** — venue-aware comprehensive review with scoring
-8. **Everything in the terminal** — no GUI, no browser
+5. **`/compile`** — builds the PDF, then you show the final result
+6. **Everything in the terminal** — no GUI, no browser

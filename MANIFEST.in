@@ -1,0 +1,6 @@
+include LICENSE
+include README.md
+include CHANGELOG.md
+include CONTRIBUTING.md
+recursive-include src/texguardian py.typed
+recursive-include templates *.md *.yaml

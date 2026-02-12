@@ -1,0 +1,44 @@
+# TexGuardian Configuration
+
+project:
+  main_tex: "demo_paper.tex"
+  output_dir: "build"
+
+providers:
+  default: "bedrock"
+  bedrock:
+    region: "us-east-1"
+    # Credentials loaded from .env automatically
+    # access_key_id: "${AWS_ACCESS_KEY_ID}"
+    # secret_access_key: "${AWS_SECRET_ACCESS_KEY}"
+    # profile: "default"  # Alternative: use AWS profile from ~/.aws/credentials
+
+models:
+  default: "claude opus 4.5"
+  vision: "claude opus 4.5"
+
+safety:
+  max_changed_lines: 50
+  max_rounds: 10
+  max_visual_rounds: 5
+  allowlist:
+    - "*.tex"
+    - "*.bib"
+    - "*.sty"
+    - "*.cls"
+  denylist:
+    - ".git/**"
+    - "*.pdf"
+    - "build/**"
+
+latex:
+  compiler: "latexmk"
+  engine: "pdflatex"
+  # shell_escape: true  # Enable --shell-escape for minted, svg, etc.
+  # timeout: 240        # Compilation timeout in seconds
+
+visual:
+  dpi: 150
+  diff_threshold: 5.0
+  pixel_threshold: 15       # Per-pixel intensity difference (0-255)
+  max_pages_to_analyze: 0   # 0 = analyze all pages

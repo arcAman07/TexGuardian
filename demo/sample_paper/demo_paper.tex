@@ -1,0 +1,145 @@
+\documentclass{article}
+\usepackage{amsmath}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{hyperref}
+\usepackage{natbib}
+
+\title{Attention Mechanisms for Document Understanding:\\A Comparative Study}
+\author{Jane Smith \and John Doe\\
+Department of Computer Science\\
+University of Example}
+\date{}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+% TODO: Rewrite abstract before submission
+We present a comparative study of attention mechanisms for document understanding tasks.
+Our approach achieves state-of-the-art results on three benchmarks, outperforming
+previous methods by 12\% on average. We introduce a novel cross-document attention
+mechanism that captures long-range dependencies between document sections.
+\end{abstract}
+
+\section{Introduction}
+
+Document understanding is a fundamental challenge in natural language processing
+\cite{devlin2019bert}. Recent advances in transformer architectures have significantly
+improved performance on various NLP tasks \cite{vaswani2017attention}. However,
+applying these models to long documents remains challenging due to the quadratic
+complexity of self-attention \cite{beltagy2020longformer}.
+
+% FIXME: Add more motivation here
+
+Our key contributions are:
+\begin{enumerate}
+    \item A novel cross-document attention mechanism
+    \item Comprehensive evaluation on three benchmarks
+    \item Analysis of attention patterns in document understanding
+\end{enumerate}
+
+\section{Related Work}
+
+\textbf{Attention Mechanisms.} The transformer architecture \cite{vaswani2017attention}
+introduced multi-head self-attention, which has become the foundation of modern NLP.
+BERT \cite{devlin2019bert} and GPT \cite{radford2019language} demonstrated the
+effectiveness of pre-trained transformers. Recent work by Brown et al. \cite{brown2020language}
+showed that scaling language models leads to few-shot learning capabilities.
+
+\textbf{Document Understanding.} Long document processing has been addressed through
+sparse attention patterns \cite{beltagy2020longformer}, hierarchical approaches
+\cite{zhang2019hibert}, and sliding window methods. Our work builds on these approaches
+while introducing cross-document attention for multi-document tasks.
+
+\section{Method}
+
+\subsection{Cross-Document Attention}
+
+Given a set of documents $D = \{d_1, d_2, \ldots, d_n\}$, we compute cross-document
+attention as follows:
+
+\begin{equation}
+    \text{CrossAttn}(Q, K, V) = \text{softmax}\left(\frac{QK^T}{\sqrt{d_k}}\right)V
+\end{equation}
+
+where $Q$ comes from the target document and $K, V$ from source documents.
+
+\begin{figure}[t]
+    \centering
+    % Deliberate overflow: width=1.4\columnwidth
+    \includegraphics[width=1.4\columnwidth]{attention_visualization.pdf}
+    \caption{Cross-document attention patterns showing information flow between documents.}
+    \label{fig:attention}
+\end{figure}
+
+\subsection{Training Procedure}
+
+We train our model using the standard cross-entropy loss with label smoothing
+($\epsilon = 0.1$). The learning rate follows a linear warmup schedule for the
+first 10\% of training steps, followed by cosine decay.
+
+\section{Experiments}
+
+\subsection{Datasets}
+
+We evaluate on three benchmarks:
+\begin{itemize}
+    \item \textbf{DocQA}: Document question answering (10K examples)
+    \item \textbf{DocNLI}: Document-level natural language inference (25K examples)
+    \item \textbf{DocSum}: Multi-document summarization (5K examples)
+\end{itemize}
+
+\subsection{Results}
+
+Table~\ref{tab:results} shows our main results. Our cross-document attention
+mechanism consistently outperforms baselines across all three tasks.
+
+\begin{table}[t]
+    \caption{Main results on document understanding benchmarks. Best results in \textbf{bold}.}
+    \label{tab:results}
+    \centering
+    \begin{tabular}{lccc}
+        \toprule
+        Model & DocQA & DocNLI & DocSum \\
+        \midrule
+        BERT-base & 72.3 & 78.1 & 35.2 \\
+        Longformer & 76.8 & 81.4 & 38.7 \\
+        BigBird & 77.2 & 82.0 & 39.1 \\
+        \midrule
+        Ours (single) & 80.1 & 84.3 & 41.5 \\
+        Ours (cross-doc) & \textbf{82.5} & \textbf{86.7} & \textbf{43.8} \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+As shown in Figure~\ref{fig:attention}, the cross-document attention mechanism
+learns to focus on relevant passages across documents.
+
+\section{Discussion}
+
+Our results demonstrate that cross-document attention provides significant improvements
+over single-document approaches. The attention patterns reveal that the model learns
+to identify topically related content across documents, even when surface-level
+similarity is low.
+
+% TODO: Add ablation study results
+
+\subsection{Limitations}
+
+Our approach has several limitations. First, the computational cost scales linearly
+with the number of input documents. Second, we have only evaluated on English-language
+benchmarks. Third, our evaluation is limited to three tasks and may not generalize
+to all document understanding scenarios.
+
+\section{Conclusion}
+
+We presented a cross-document attention mechanism for document understanding that
+achieves state-of-the-art results on three benchmarks. Our analysis reveals that
+the model learns meaningful cross-document attention patterns. Future work will
+explore extending our approach to multilingual settings and more diverse document types.
+
+\bibliographystyle{plainnat}
+\bibliography{demo_refs}
+
+\end{document}

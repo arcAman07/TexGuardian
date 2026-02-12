@@ -1,0 +1,485 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TexGuardian — AI-Powered LaTeX Paper Assistant for Researchers</title>
+  <meta name="description" content="TexGuardian is a researcher-focused CLI tool that helps you write, verify, and polish LaTeX academic papers for conference submission. Claude Code, but for LaTeX.">
+  <meta name="keywords" content="LaTeX, academic papers, NeurIPS, ICML, ICLR, research, LLM, CLI, Claude, paper submission">
+  <meta property="og:title" content="TexGuardian — AI-Powered LaTeX Paper Assistant">
+  <meta property="og:description" content="26 slash commands for every stage of paper preparation. Verify, fix, and polish your LaTeX papers with LLM-powered analysis.">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://texguardian.github.io/texguardian">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="TexGuardian — AI-Powered LaTeX Paper Assistant">
+  <meta name="twitter:description" content="Claude Code, but for LaTeX. 26 commands for every stage of paper preparation.">
+  <meta name="theme-color" content="#2563EB">
+  <meta name="author" content="TexGuardian Contributors">
+  <link rel="canonical" href="https://texguardian.github.io/texguardian">
+  <style>
+    :root {
+      --blue: #2563EB;
+      --blue-dark: #1D4ED8;
+      --green: #16A34A;
+      --gray-50: #F8FAFC;
+      --gray-100: #F1F5F9;
+      --gray-200: #E2E8F0;
+      --gray-300: #CBD5E1;
+      --gray-400: #94A3B8;
+      --gray-500: #64748B;
+      --gray-700: #334155;
+      --gray-800: #1E293B;
+      --gray-900: #0F172A;
+      --radius: 12px;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      color: var(--gray-800);
+      line-height: 1.6;
+      background: var(--gray-50);
+    }
+    a { color: var(--blue); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    a:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; border-radius: 4px; }
+    .container { max-width: 1100px; margin: 0 auto; padding: 0 24px; }
+    .section-subtitle { text-align: center; color: var(--gray-500); max-width: 600px; margin: -32px auto 48px; font-size: 1.05rem; }
+
+    /* Hero */
+    .hero {
+      text-align: center;
+      padding: 80px 24px 60px;
+      background: linear-gradient(135deg, #EFF6FF 0%, #F8FAFC 50%, #F0FDF4 100%);
+      border-bottom: 1px solid var(--gray-200);
+    }
+    .hero-logo { width: 400px; max-width: 90%; margin-bottom: 24px; }
+    .hero p.tagline { font-size: 1.25rem; color: var(--gray-500); max-width: 660px; margin: 0 auto 12px; }
+    .hero p.sub { font-size: 1rem; color: var(--gray-500); max-width: 540px; margin: 0 auto 32px; }
+    .hero-actions { display: flex; gap: 16px; justify-content: center; flex-wrap: wrap; }
+    .btn {
+      display: inline-flex; align-items: center; gap: 8px;
+      padding: 12px 28px; border-radius: 8px; font-size: 1rem; font-weight: 600;
+      transition: all 0.15s ease; border: none; cursor: pointer;
+    }
+    .btn:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+    .btn-primary { background: var(--blue); color: #fff; }
+    .btn-primary:hover { background: var(--blue-dark); text-decoration: none; }
+    .btn-secondary { background: var(--gray-800); color: #fff; }
+    .btn-secondary:hover { background: var(--gray-900); text-decoration: none; }
+    .btn-outline { background: transparent; color: var(--blue); border: 2px solid var(--blue); }
+    .btn-outline:hover { background: var(--blue); color: #fff; text-decoration: none; }
+    .badges { display: flex; gap: 8px; justify-content: center; margin-top: 24px; flex-wrap: wrap; }
+    .badge {
+      display: inline-block; padding: 4px 10px; border-radius: 4px;
+      font-size: 0.75rem; font-weight: 600; letter-spacing: 0.5px;
+    }
+    .badge-blue { background: #DBEAFE; color: #1E40AF; }
+    .badge-green { background: #DCFCE7; color: #166534; }
+    .badge-purple { background: #EDE9FE; color: #5B21B6; }
+    .badge-orange { background: #FFF7ED; color: #9A3412; }
+
+    /* Terminal Demo */
+    .terminal-section { padding: 60px 24px; background: var(--gray-900); }
+    .terminal-section h2 { text-align: center; color: #F0F6FC; font-size: 1.8rem; margin-bottom: 32px; }
+    .terminal {
+      max-width: min(800px, 90vw); margin: 0 auto; border-radius: var(--radius);
+      overflow: hidden; box-shadow: 0 25px 50px rgba(0,0,0,0.4);
+    }
+    .terminal-bar {
+      background: #1a1a2e; padding: 10px 16px;
+      display: flex; gap: 8px; align-items: center;
+    }
+    .terminal-dot { width: 12px; height: 12px; border-radius: 50%; }
+    .terminal-dot.red { background: #FF5F57; }
+    .terminal-dot.yellow { background: #FEBC2E; }
+    .terminal-dot.green { background: #28C840; }
+    .terminal-title { color: var(--gray-400); font-size: 0.8rem; margin-left: 8px; }
+    .terminal-body {
+      background: #0D1117; padding: 20px 24px; font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', monospace;
+      font-size: 0.85rem; line-height: 1.7; color: #C9D1D9; overflow-x: auto;
+    }
+    .terminal-body .prompt { color: #79C0FF; }
+    .terminal-body .cmd { color: #D2A8FF; }
+    .terminal-body .pass { color: #3FB950; }
+    .terminal-body .fail { color: #F85149; }
+    .terminal-body .warn { color: #D29922; }
+    .terminal-body .cyan { color: #58A6FF; }
+    .terminal-body .dim { color: #484F58; }
+    .terminal-body .bold { font-weight: 700; color: #F0F6FC; }
+
+    /* Features */
+    .features { padding: 80px 24px; }
+    .features h2 { text-align: center; font-size: 2rem; margin-bottom: 48px; color: var(--gray-900); }
+    .feature-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 24px; }
+    .feature-card {
+      background: #fff; border: 1px solid var(--gray-200); border-radius: var(--radius);
+      padding: 28px; transition: box-shadow 0.2s;
+    }
+    .feature-card:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
+    .feature-icon { font-size: 2rem; margin-bottom: 12px; }
+    .feature-card h3 { font-size: 1.1rem; margin-bottom: 8px; color: var(--gray-900); }
+    .feature-card p { color: var(--gray-500); font-size: 0.95rem; }
+
+    /* How it works */
+    .how-section { padding: 80px 24px; background: #fff; border-top: 1px solid var(--gray-200); }
+    .how-section h2 { text-align: center; font-size: 2rem; margin-bottom: 48px; color: var(--gray-900); }
+    .how-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 32px; max-width: 900px; margin: 0 auto; }
+    .how-step { text-align: center; }
+    .how-number {
+      display: inline-flex; align-items: center; justify-content: center;
+      width: 48px; height: 48px; border-radius: 50%; background: var(--blue);
+      color: #fff; font-size: 1.2rem; font-weight: 700; margin-bottom: 16px;
+    }
+    .how-step h3 { font-size: 1rem; margin-bottom: 8px; color: var(--gray-900); }
+    .how-step p { color: var(--gray-500); font-size: 0.9rem; }
+    .how-code { font-family: 'SF Mono', monospace; font-size: 0.85rem; background: var(--gray-100); padding: 4px 10px; border-radius: 6px; display: inline-block; margin-top: 8px; color: var(--gray-700); }
+
+    /* Commands */
+    .commands-section { padding: 80px 24px; border-top: 1px solid var(--gray-200); }
+    .commands-section h2 { text-align: center; font-size: 2rem; margin-bottom: 48px; color: var(--gray-900); }
+    .cmd-categories { max-width: 900px; margin: 0 auto; }
+    .cmd-category { margin-bottom: 32px; }
+    .cmd-category-title { font-size: 0.8rem; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: var(--gray-400); margin-bottom: 12px; padding-left: 4px; }
+    .cmd-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 10px; }
+    .cmd-item {
+      display: flex; align-items: baseline; gap: 10px; padding: 10px 14px;
+      border-radius: 8px; background: #fff; border: 1px solid var(--gray-200);
+    }
+    .cmd-name { font-family: 'SF Mono', monospace; font-weight: 600; color: var(--blue); font-size: 0.9rem; white-space: nowrap; }
+    .cmd-desc { color: var(--gray-500); font-size: 0.85rem; }
+
+    /* Prerequisites */
+    .prereq-section { padding: 40px 24px 0; }
+    .prereq-section h3 { text-align: center; font-size: 1.2rem; margin-bottom: 20px; color: var(--gray-700); }
+    .prereq-grid { display: flex; gap: 24px; justify-content: center; flex-wrap: wrap; max-width: 700px; margin: 0 auto; }
+    .prereq-item { display: flex; align-items: center; gap: 8px; font-size: 0.9rem; color: var(--gray-500); }
+    .prereq-check { color: var(--green); font-weight: 700; }
+
+    /* Install */
+    .install-section { padding: 80px 24px; background: #fff; border-top: 1px solid var(--gray-200); }
+    .install-section h2 { text-align: center; font-size: 2rem; margin-bottom: 12px; color: var(--gray-900); }
+    .install-section .section-subtitle { margin-bottom: 32px; }
+    .install-box {
+      max-width: 600px; margin: 0 auto; background: var(--gray-900); color: #C9D1D9;
+      border-radius: var(--radius); padding: 24px 28px; font-family: 'SF Mono', monospace;
+      font-size: 0.85rem; line-height: 1.8; overflow-x: auto;
+    }
+    .install-box .comment { color: #484F58; }
+    .install-box .cmd-line { color: #79C0FF; }
+
+    /* FAQ */
+    .faq-section { padding: 80px 24px; }
+    .faq-section h2 { text-align: center; font-size: 2rem; margin-bottom: 48px; color: var(--gray-900); }
+    .faq-grid { max-width: 700px; margin: 0 auto; }
+    .faq-item { border-bottom: 1px solid var(--gray-200); padding: 20px 0; }
+    .faq-item:first-child { border-top: 1px solid var(--gray-200); }
+    .faq-q { font-weight: 700; color: var(--gray-900); margin-bottom: 8px; font-size: 1rem; }
+    .faq-a { color: var(--gray-500); font-size: 0.95rem; }
+
+    /* Footer */
+    footer {
+      text-align: center; padding: 48px 24px; border-top: 1px solid var(--gray-200);
+      color: var(--gray-400); font-size: 0.85rem;
+    }
+    .footer-links { display: flex; gap: 24px; justify-content: center; flex-wrap: wrap; margin-bottom: 16px; }
+    .footer-links a { color: var(--gray-500); }
+    .footer-links a:hover { color: var(--blue); }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+      .hero { padding: 48px 16px 40px; }
+      .hero-logo { width: 280px; }
+      .hero p.tagline { font-size: 1.05rem; }
+      .hero p.sub { font-size: 0.9rem; }
+      .btn { padding: 10px 20px; font-size: 0.9rem; }
+      .features, .how-section, .commands-section, .install-section, .faq-section { padding: 48px 16px; }
+      .features h2, .how-section h2, .commands-section h2, .install-section h2, .faq-section h2 { font-size: 1.5rem; margin-bottom: 32px; }
+      .section-subtitle { font-size: 0.95rem; margin-bottom: 32px; }
+      .feature-grid { grid-template-columns: 1fr; gap: 16px; }
+      .how-grid { grid-template-columns: 1fr; gap: 24px; }
+      .cmd-grid { grid-template-columns: 1fr; }
+      .terminal-body { font-size: 0.75rem; padding: 16px; }
+      .terminal-section { padding: 40px 16px; }
+      .terminal-section h2 { font-size: 1.3rem; }
+      .install-box { font-size: 0.78rem; padding: 16px 20px; }
+      .prereq-grid { flex-direction: column; align-items: center; }
+    }
+    @media (max-width: 480px) {
+      .hero p.tagline { font-size: 0.95rem; }
+      .badges { gap: 6px; }
+      .badge { font-size: 0.65rem; padding: 3px 8px; }
+      .hero-actions { flex-direction: column; align-items: center; }
+    }
+  </style>
+</head>
+<body>
+
+<a href="#install" class="skip-link" style="position:absolute;left:-9999px;top:auto;width:1px;height:1px;overflow:hidden;z-index:100;padding:8px 16px;background:var(--blue);color:#fff;font-weight:600;border-radius:0 0 8px 0;text-decoration:none;" onfocus="this.style.cssText='position:fixed;left:0;top:0;z-index:100;padding:8px 16px;background:var(--blue);color:#fff;font-weight:600;border-radius:0 0 8px 0;text-decoration:none;'" onblur="this.style.cssText='position:absolute;left:-9999px;top:auto;width:1px;height:1px;overflow:hidden;'">Skip to content</a>
+
+<!-- Hero -->
+<section class="hero">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="assets/logo-dark.svg">
+    <source media="(prefers-color-scheme: light)" srcset="assets/logo-light.svg">
+    <img src="assets/logo-light.svg" alt="TexGuardian" class="hero-logo">
+  </picture>
+  <p class="tagline">A researcher-focused CLI tool that helps you write, verify, and polish LaTeX academic papers for conference submission.</p>
+  <p class="sub">Claude Code, but for LaTeX. 26 commands for every stage of paper preparation.</p>
+  <div class="hero-actions">
+    <a href="https://github.com/texguardian/texguardian" class="btn btn-primary">
+      <svg width="20" height="20" viewBox="0 0 16 16" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+      GitHub
+    </a>
+    <a href="#install" class="btn btn-secondary">Get Started</a>
+    <a href="https://github.com/texguardian/texguardian/blob/main/docs/GUIDE.md" class="btn btn-outline">Documentation</a>
+  </div>
+  <div class="badges">
+    <span class="badge badge-blue">Python 3.11+</span>
+    <span class="badge badge-green">MIT License</span>
+    <span class="badge badge-orange">Claude Opus 4.5</span>
+    <span class="badge badge-purple">Bedrock | OpenRouter</span>
+  </div>
+</section>
+
+<!-- Terminal Demo -->
+<section class="terminal-section">
+  <h2>See it in action</h2>
+  <div class="terminal">
+    <div class="terminal-bar">
+      <div class="terminal-dot red"></div>
+      <div class="terminal-dot yellow"></div>
+      <div class="terminal-dot green"></div>
+      <span class="terminal-title">texguardian chat</span>
+    </div>
+    <div class="terminal-body">
+      <div><span class="prompt">&gt;&gt;&gt;</span> <span class="cmd">/verify</span></div>
+      <div>Running verification checks...</div>
+      <br>
+      <div><span class="dim">  citations         warning  </span><span class="pass">PASS</span>   54 citations OK</div>
+      <div><span class="dim">  figure_overflow   error    </span><span class="fail">FAIL</span>   Figure width exceeds column width</div>
+      <div><span class="dim">  citation_format   warning  </span><span class="warn">WARN</span>   Use \citep{} or \citet{}</div>
+      <div><span class="dim">  todo_remaining    error    </span><span class="fail">FAIL</span>   Remove TODO/FIXME markers</div>
+      <br>
+      <div><span class="fail bold">2 error(s) found</span></div>
+      <br>
+      <div><span class="prompt">&gt;&gt;&gt;</span> <span class="cmd">/figures fix</span></div>
+      <div><span class="bold">Figure Pipeline</span></div>
+      <div>  <span class="pass">&#10003;</span> Generated 1 patch: <span class="cyan">main.tex</span> (+1/-1)</div>
+      <div>  [A]pply all | [R]eview | [N]o: <span class="bold">a</span></div>
+      <div>  <span class="pass">&#10003;</span> Checkpoint created</div>
+      <div>  <span class="pass">&#10003;</span> Patch applied &mdash; width=1.4\columnwidth &rarr; width=\columnwidth</div>
+      <br>
+      <div><span class="prompt">&gt;&gt;&gt;</span> <span class="cmd">Can you suggest more citations for the related work?</span></div>
+      <div><span class="dim">Thinking...</span></div>
+      <div>Based on your related work section, I'd suggest adding:</div>
+      <div>  1. <span class="cyan">Kitaev et al. (2020)</span> &mdash; Reformer: efficient transformer</div>
+      <div>  2. <span class="cyan">Zaheer et al. (2020)</span> &mdash; BigBird: sparse attention</div>
+      <br>
+      <div><span class="prompt">&gt;&gt;&gt;</span> <span class="cmd">/feedback</span></div>
+      <div><span class="bold">Overall Score: 72/100</span></div>
+      <div>  Structure: <span class="pass">78</span>  Writing: <span class="pass">75</span>  Technical: <span class="warn">68</span>  Citations: <span class="pass">82</span></div>
+    </div>
+  </div>
+</section>
+
+<!-- Features -->
+<section class="features">
+  <div class="container">
+    <h2>Everything you need to ship your paper</h2>
+    <p class="section-subtitle">From first draft to camera-ready, TexGuardian handles the tedious parts so you can focus on the research.</p>
+    <div class="feature-grid">
+      <div class="feature-card">
+        <div class="feature-icon" role="img" aria-label="Search">&#128270;</div>
+        <h3>Smart Verification</h3>
+        <p>Automated checks for citations, figures, tables, page limits, and custom rules defined in paper_spec.md. Catches issues before reviewers do.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon" role="img" aria-label="Lightning">&#9889;</div>
+        <h3>LLM-Powered Fixes</h3>
+        <p>Claude reads your paper, understands the issues, and generates targeted diff patches. Every fix is shown as a reviewable diff before applying.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon" role="img" aria-label="Eye">&#128065;</div>
+        <h3>Visual Polish</h3>
+        <p>Renders your PDF and sends pages to a vision model. Catches layout issues text-only analysis misses: overlapping figures, bad spacing, alignment.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon" role="img" aria-label="Speech">&#128172;</div>
+        <h3>Natural Language</h3>
+        <p>Just type in plain English. "Fix the figure overflow on line 303", "make this anonymous", "suggest more citations for related work".</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon" role="img" aria-label="Lock">&#128274;</div>
+        <h3>Checkpoint Safety</h3>
+        <p>Checkpoints before every edit. Allowlist/denylist file controls. Max changed lines. Instant rollback with /revert. Your paper is always safe.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon" role="img" aria-label="Book">&#128218;</div>
+        <h3>Citation Validation</h3>
+        <p>Cross-references citations against CrossRef and Semantic Scholar. Finds undefined refs, unused entries, format issues, and suggests missing citations.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- How It Works -->
+<section class="how-section">
+  <div class="container">
+    <h2>How it works</h2>
+    <p class="section-subtitle">Three commands to go from messy draft to submission-ready paper.</p>
+    <div class="how-grid">
+      <div class="how-step">
+        <div class="how-number">1</div>
+        <h3>Initialize</h3>
+        <p>Run <code>texguardian init</code> in your paper directory. Set your venue, deadline, and custom checks.</p>
+        <div class="how-code">texguardian init</div>
+      </div>
+      <div class="how-step">
+        <div class="how-number">2</div>
+        <h3>Chat</h3>
+        <p>Start the REPL. Use slash commands or plain English. The LLM reads your paper and understands context.</p>
+        <div class="how-code">texguardian chat</div>
+      </div>
+      <div class="how-step">
+        <div class="how-number">3</div>
+        <h3>Review &amp; Apply</h3>
+        <p>Every edit is a reviewable diff patch. Apply, review, or skip. Checkpoints let you roll back anytime.</p>
+        <div class="how-code">[A]pply | [R]eview | [N]o</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Commands -->
+<section class="commands-section">
+  <div class="container">
+    <h2>26 commands for every stage</h2>
+    <p class="section-subtitle">From verification to camera-ready, each command handles one part of the paper lifecycle.</p>
+    <div class="cmd-categories">
+      <div class="cmd-category">
+        <div class="cmd-category-title">Analysis</div>
+        <div class="cmd-grid">
+          <div class="cmd-item"><span class="cmd-name">/verify</span><span class="cmd-desc">Run all checks</span></div>
+          <div class="cmd-item"><span class="cmd-name">/figures</span><span class="cmd-desc">Verify &amp; fix figures</span></div>
+          <div class="cmd-item"><span class="cmd-name">/tables</span><span class="cmd-desc">Verify &amp; fix tables</span></div>
+          <div class="cmd-item"><span class="cmd-name">/citations</span><span class="cmd-desc">Verify &amp; fix citations</span></div>
+          <div class="cmd-item"><span class="cmd-name">/section</span><span class="cmd-desc">Deep section analysis</span></div>
+          <div class="cmd-item"><span class="cmd-name">/feedback</span><span class="cmd-desc">Paper review &amp; scoring</span></div>
+          <div class="cmd-item"><span class="cmd-name">/suggest_refs</span><span class="cmd-desc">AI citation suggestions</span></div>
+          <div class="cmd-item"><span class="cmd-name">/page_count</span><span class="cmd-desc">Page &amp; section stats</span></div>
+        </div>
+      </div>
+      <div class="cmd-category">
+        <div class="cmd-category-title">Preparation</div>
+        <div class="cmd-grid">
+          <div class="cmd-item"><span class="cmd-name">/compile</span><span class="cmd-desc">Build LaTeX to PDF</span></div>
+          <div class="cmd-item"><span class="cmd-name">/review</span><span class="cmd-desc">Full fix pipeline</span></div>
+          <div class="cmd-item"><span class="cmd-name">/anonymize</span><span class="cmd-desc">Double-blind prep</span></div>
+          <div class="cmd-item"><span class="cmd-name">/camera_ready</span><span class="cmd-desc">Final submission</span></div>
+          <div class="cmd-item"><span class="cmd-name">/polish_visual</span><span class="cmd-desc">Vision-based fixes</span></div>
+          <div class="cmd-item"><span class="cmd-name">/venue</span><span class="cmd-desc">Download templates</span></div>
+        </div>
+      </div>
+      <div class="cmd-category">
+        <div class="cmd-category-title">Tools</div>
+        <div class="cmd-grid">
+          <div class="cmd-item"><span class="cmd-name">/model</span><span class="cmd-desc">Configure LLM</span></div>
+          <div class="cmd-item"><span class="cmd-name">/read</span><span class="cmd-desc">View file contents</span></div>
+          <div class="cmd-item"><span class="cmd-name">/write</span><span class="cmd-desc">Write to files</span></div>
+          <div class="cmd-item"><span class="cmd-name">/grep</span><span class="cmd-desc">Search in files</span></div>
+          <div class="cmd-item"><span class="cmd-name">/search</span><span class="cmd-desc">Find files by name</span></div>
+          <div class="cmd-item"><span class="cmd-name">/bash</span><span class="cmd-desc">Run shell commands</span></div>
+          <div class="cmd-item"><span class="cmd-name">/diff</span><span class="cmd-desc">Show changes</span></div>
+          <div class="cmd-item"><span class="cmd-name">/revert</span><span class="cmd-desc">Rollback changes</span></div>
+          <div class="cmd-item"><span class="cmd-name">/approve</span><span class="cmd-desc">Apply patches</span></div>
+          <div class="cmd-item"><span class="cmd-name">/watch</span><span class="cmd-desc">Auto-recompile</span></div>
+          <div class="cmd-item"><span class="cmd-name">/report</span><span class="cmd-desc">Verification report</span></div>
+          <div class="cmd-item"><span class="cmd-name">/help</span><span class="cmd-desc">List commands</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Install -->
+<section class="install-section" id="install">
+  <div class="container">
+    <h2>Get started</h2>
+    <p class="section-subtitle">Install TexGuardian and start improving your paper.</p>
+
+    <div class="prereq-section">
+      <h3>Prerequisites</h3>
+      <div class="prereq-grid">
+        <div class="prereq-item"><span class="prereq-check">&#10003;</span> Python 3.11+</div>
+        <div class="prereq-item"><span class="prereq-check">&#10003;</span> LaTeX (latexmk + pdflatex)</div>
+        <div class="prereq-item"><span class="prereq-check">&#10003;</span> AWS or OpenRouter credentials</div>
+        <div class="prereq-item"><span class="prereq-check">&#10003;</span> Poppler (optional, for visual polish)</div>
+      </div>
+    </div>
+
+    <br>
+    <div class="install-box">
+      <div class="comment"># Install from source</div>
+      <div><span class="cmd-line">git clone</span> https://github.com/texguardian/texguardian.git</div>
+      <div><span class="cmd-line">cd</span> texguardian && <span class="cmd-line">pip install</span> -e .</div>
+      <br>
+      <div class="comment"># Initialize your paper</div>
+      <div><span class="cmd-line">cd</span> /path/to/your/paper</div>
+      <div><span class="cmd-line">texguardian</span> init</div>
+      <br>
+      <div class="comment"># Set credentials (AWS Bedrock)</div>
+      <div><span class="cmd-line">export</span> AWS_ACCESS_KEY_ID="..."</div>
+      <div><span class="cmd-line">export</span> AWS_SECRET_ACCESS_KEY="..."</div>
+      <br>
+      <div class="comment"># Start chatting</div>
+      <div><span class="cmd-line">texguardian</span> chat</div>
+    </div>
+  </div>
+</section>
+
+<!-- FAQ -->
+<section class="faq-section">
+  <div class="container">
+    <h2>Frequently asked questions</h2>
+    <div class="faq-grid">
+      <div class="faq-item">
+        <div class="faq-q">Is TexGuardian free?</div>
+        <div class="faq-a">TexGuardian is open source (MIT license) and free to use. You only pay for LLM API calls through AWS Bedrock or OpenRouter.</div>
+      </div>
+      <div class="faq-item">
+        <div class="faq-q">Which LLM models are supported?</div>
+        <div class="faq-a">Claude Opus 4.5, Opus 4, Sonnet 4.5, and Sonnet 4 via AWS Bedrock. Any model from openrouter.ai via OpenRouter, including GPT-4o.</div>
+      </div>
+      <div class="faq-item">
+        <div class="faq-q">Can it break my paper?</div>
+        <div class="faq-a">No. Every edit is shown as a reviewable diff patch before applying. Checkpoints are created before every modification, and /revert rolls back instantly.</div>
+      </div>
+      <div class="faq-item">
+        <div class="faq-q">Which conferences are supported?</div>
+        <div class="faq-a">TexGuardian works with any LaTeX paper. Built-in template support for NeurIPS, ICML, ICLR, AAAI, CVPR, ECCV, ACL, EMNLP, NAACL, CHI, KDD, and more.</div>
+      </div>
+      <div class="faq-item">
+        <div class="faq-q">Do I need LaTeX installed locally?</div>
+        <div class="faq-a">Yes. You need latexmk and a TeX engine (pdflatex, xelatex, or lualatex) for compilation. Run <code>texguardian doctor</code> to check your setup.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Footer -->
+<footer>
+  <div class="footer-links">
+    <a href="https://github.com/texguardian/texguardian">GitHub</a>
+    <a href="https://github.com/texguardian/texguardian/blob/main/docs/GUIDE.md">Documentation</a>
+    <a href="https://github.com/texguardian/texguardian/blob/main/CHANGELOG.md">Changelog</a>
+    <a href="https://github.com/texguardian/texguardian/issues">Issues</a>
+    <a href="https://github.com/texguardian/texguardian/blob/main/CONTRIBUTING.md">Contributing</a>
+  </div>
+  <p>TexGuardian &mdash; MIT License &mdash; Built for researchers, by researchers.</p>
+  <p style="margin-top: 8px; font-size: 0.8rem; color: var(--gray-400);">
+    <a href="https://github.com/texguardian/texguardian/blob/main/docs/INSTALL.md" style="color: var(--gray-400);">Local Testing Guide</a>
+  </p>
+</footer>
+
+</body>
+</html>

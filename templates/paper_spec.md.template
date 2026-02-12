@@ -1,0 +1,84 @@
+---
+title: "Your Paper Title"
+venue: "NeurIPS 2026"
+deadline: "2026-05-15"
+thresholds:
+  max_pages: 9
+  min_references: 30
+  max_self_citation_ratio: 0.2
+human_review:
+  - "Changes to abstract"
+  - "Deletion of more than 10 lines"
+  - "Modifications to author list"
+---
+
+# Paper Specification
+
+This file defines custom verification checks and rules for your paper. TexGuardian will use these to validate your document.
+
+## Venue Guidelines
+
+- Page limit: 9 pages (excluding references)
+- Reference format: natbib with \citep{} and \citet{}
+- Anonymous submission required
+
+## Custom Checks
+
+Define pattern-based checks that run during `/verify`:
+
+```check
+name: citation_format
+severity: warning
+pattern: "\\cite\\{(?!p|t)"
+message: "Use \\citep{} or \\citet{} instead of \\cite{}"
+```
+
+```check
+name: todo_remaining
+severity: error
+pattern: "TODO|FIXME|XXX"
+message: "Remove TODO/FIXME/XXX markers before submission"
+```
+
+```check
+name: anonymous_violation
+severity: error
+pattern: "(?i)\\b(our previous work|we previously showed)"
+message: "Avoid phrases that may reveal identity in anonymous submission"
+```
+
+```check
+name: passive_voice
+severity: info
+pattern: "\\b(is|are|was|were) (shown|demonstrated|proven|observed)\\b"
+message: "Consider using active voice"
+```
+
+## Section Guidelines
+
+### Introduction
+- State the problem clearly
+- Motivate why it matters
+- List contributions explicitly
+
+### Related Work
+- Cover all relevant prior work
+- Position your contribution clearly
+
+### Method
+- Provide sufficient detail for reproducibility
+- Include algorithm pseudocode if applicable
+
+### Experiments
+- Include multiple baselines
+- Report statistical significance
+- Include ablation studies
+
+### Conclusion
+- Summarize contributions
+- Acknowledge limitations
+- Discuss broader impact
+
+## Notes
+
+Add any additional notes about your paper requirements here.

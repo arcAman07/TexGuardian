@@ -1,0 +1,39 @@
+# TexGuardian Configuration - Esolang Paper Example
+
+project:
+  main_tex: "esolang_bench_paper.tex"
+  output_dir: "build"
+
+providers:
+  default: "bedrock"
+  bedrock:
+    region: "us-east-1"
+    # Credentials loaded from environment variables (AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY)
+    # Or use profile: "your-profile-name" if using AWS profiles
+
+models:
+  default: "claude opus 4.5"
+  vision: "claude opus 4.5"
+
+safety:
+  max_changed_lines: 50
+  max_rounds: 10
+  max_visual_rounds: 5
+  allowlist:
+    - "*.tex"
+    - "*.bib"
+    - "*.sty"
+    - "*.cls"
+  denylist:
+    - ".git/**"
+    - "*.pdf"
+    - "build/**"
+
+latex:
+  compiler: "latexmk"
+  engine: "pdflatex"
+  output_dir: "build"
+
+visual:
+  dpi: 150
+  diff_threshold: 5.0

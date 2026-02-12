@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 80" fill="none">
+  <!-- Shield icon -->
+  <g transform="translate(8, 4)">
+    <path d="M36 4L8 16v24c0 18.67 11.93 36.13 28 40 16.07-3.87 28-21.33 28-40V16L36 4z" fill="#3B82F6" opacity="0.2" stroke="#60A5FA" stroke-width="2.5"/>
+    <path d="M36 4L8 16v24c0 18.67 11.93 36.13 28 40 16.07-3.87 28-21.33 28-40V16L36 4z" fill="none" stroke="#60A5FA" stroke-width="2.5"/>
+    <!-- TeX symbol inside shield -->
+    <text x="36" y="48" text-anchor="middle" font-family="'Computer Modern', 'Latin Modern Roman', Georgia, serif" font-size="28" font-weight="bold" fill="#60A5FA" font-style="italic">T</text>
+    <!-- Checkmark -->
+    <path d="M24 38l8 8 16-16" stroke="#4ADE80" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+  </g>
+  <!-- Text -->
+  <text x="88" y="36" font-family="'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif" font-size="32" font-weight="700" fill="#F1F5F9" letter-spacing="-0.5">
+    <tspan>Tex</tspan><tspan fill="#60A5FA">Guardian</tspan>
+  </text>
+  <text x="88" y="60" font-family="'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif" font-size="14" fill="#94A3B8" letter-spacing="0.5">AI-powered LaTeX paper assistant</text>
+</svg>

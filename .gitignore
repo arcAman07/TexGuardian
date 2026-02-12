@@ -1,0 +1,213 @@
+# ========================
+# TexGuardian .gitignore
+# ========================
+
+# -----------------------
+# SECURITY - CREDENTIALS
+# -----------------------
+# CRITICAL: Never commit credentials
+.env
+.env.*
+*.env
+.envrc
+secrets.yaml
+secrets.yml
+credentials.json
+credentials.yaml
+*credentials*
+*secret*
+*.pem
+*.key
+*.crt
+*.p12
+*.pfx
+
+# AWS
+.aws/
+aws-credentials*
+IAM*.csv
+
+# API Keys
+*api_key*
+*apikey*
+
+# -----------------------
+# Python
+# -----------------------
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Virtual environments
+.venv/
+venv/
+ENV/
+
+# PyInstaller
+*.manifest
+*.spec
+
+# Installer logs
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Unit test / coverage
+htmlcov/
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+.hypothesis/
+.pytest_cache/
+cover/
+
+# Type checkers
+.mypy_cache/
+.dmypy.json
+dmypy.json
+.pytype/
+.pyre/
+
+# -----------------------
+# LaTeX Build Outputs
+# -----------------------
+*.aux
+*.bbl
+*.blg
+*.fdb_latexmk
+*.fls
+*.log
+*.out
+*.toc
+*.lof
+*.lot
+*.idx
+*.ilg
+*.ind
+*.nav
+*.snm
+*.vrb
+*.synctex.gz
+*.synctex(busy)
+*.pdfsync
+
+# Build directories
+build/
+output/
+_build/
+
+# -----------------------
+# IDE / Editor
+# -----------------------
+.idea/
+.vscode/
+.claude/
+*.swp
+*.swo
+*~
+.project
+.pydevproject
+.settings/
+*.sublime-project
+*.sublime-workspace
+.spyderproject
+.spyproject
+
+# -----------------------
+# OS Generated
+# -----------------------
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini
+
+# -----------------------
+# TexGuardian Specific
+# -----------------------
+# Working directories (contain checkpoints, renders, history)
+.texguardian/
+
+# Internal planning docs
+idea.md
+
+# Root-level config artifacts from local testing
+/texguardian.yaml
+/paper_spec.md
+EXAMPLES_README.md
+
+# Demo test_run working directory (checkpoints, history)
+demo/test_run/.texguardian/
+
+# Backup files
+*.backup
+*.bak
+*.orig
+
+# Rendered images (large files)
+renders/
+*.png
+!docs/assets/*.png
+
+# Checkpoint files
+checkpoints/
+
+# History files
+history
+
+# Reports
+report*.md
+
+# PDFs (keep intentional ones in docs/ and demo/)
+*.pdf
+!docs/**/*.pdf
+!demo/**/*.pdf
+
+# -----------------------
+# Jupyter
+# -----------------------
+.ipynb_checkpoints/
+*.ipynb
+
+# -----------------------
+# Linter / tool caches
+# -----------------------
+.ruff_cache/
+
+# -----------------------
+# Internal planning docs
+# -----------------------
+LAUNCH_PLAN.md
+
+# -----------------------
+# Misc
+# -----------------------
+*.tmp
+*.temp

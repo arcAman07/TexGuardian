@@ -1,0 +1,1 @@
+"""Checkpoint and rollback management."""

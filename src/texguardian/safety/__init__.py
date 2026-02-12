@@ -1,0 +1,1 @@
+"""Safety guards and validation."""

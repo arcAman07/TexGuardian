@@ -1,0 +1,59 @@
+# TexGuardian Configuration Template
+# Copy this to your project root as texguardian.yaml
+
+project:
+  main_tex: "main.tex"        # Main LaTeX file
+  output_dir: "build"         # Output directory for compiled PDFs
+
+providers:
+  default: "bedrock"          # Default provider: "bedrock" or "openrouter"
+
+  openrouter:
+    api_key: "${OPENROUTER_API_KEY}"  # Set via environment variable
+
+  bedrock:
+    region: "us-east-1"
+    # Option 1: Use environment variables
+    access_key_id: "${AWS_ACCESS_KEY_ID}"
+    secret_access_key: "${AWS_SECRET_ACCESS_KEY}"
+    # Option 2: Use AWS profile (uncomment and comment out the above)
+    # profile: "default"
+
+models:
+  default: "claude opus 4.5"  # Model for chat
+  vision: "claude opus 4.5"   # Model for visual verification
+
+safety:
+  max_changed_lines: 50       # Max lines per patch
+  max_rounds: 10              # Max auto-fix rounds
+  max_visual_rounds: 5        # Max visual polish rounds
+
+  # Files that can be modified
+  allowlist:
+    - "*.tex"
+    - "*.bib"
+    - "*.sty"
+    - "*.cls"
+
+  # Files/directories that cannot be accessed
+  denylist:
+    - ".git/**"
+    - "*.pdf"
+    - "build/**"
+    - "*.aux"
+    - "*.log"
+
+latex:
+  compiler: "latexmk"         # Compiler command
+  engine: "pdflatex"          # Engine: pdflatex, xelatex, lualatex
+  output_dir: "build"
+
+visual:
+  dpi: 150                    # DPI for PDF rendering
+  diff_threshold: 5.0         # Percentage threshold for convergence
+
+# Phase determines available features:
+#   v0 - Verification only (suggest changes, user applies manually)
+#   v1 - Auto-fix with safety guards (checkpoints before changes)
+#   v2 - Visual polish loop (iterative visual verification)
+phase: "v2"

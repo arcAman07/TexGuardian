@@ -1,0 +1,92 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "texguardian"
+version = "0.1.0"
+description = "Claude Code-style terminal chat app for LaTeX papers"
+readme = "README.md"
+requires-python = ">=3.11"
+license = "MIT"
+authors = [
+    { name = "TexGuardian Contributors" }
+]
+keywords = ["latex", "academic", "writing", "llm", "cli"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Environment :: Console",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Text Processing :: Markup :: LaTeX",
+]
+dependencies = [
+    "typer>=0.9.0",
+    "rich>=13.0.0",
+    "prompt-toolkit>=3.0.0",
+    "pydantic>=2.0.0",
+    "pyyaml>=6.0.0",
+    "httpx>=0.25.0",
+    "boto3>=1.34.0",
+    "pillow>=10.0.0",
+    "numpy>=1.26.0",
+    "scipy>=1.11.0",
+    "watchdog>=3.0.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0.0",
+    "pytest-asyncio>=0.21.0",
+    "pytest-cov>=4.0.0",
+    "ruff>=0.1.0",
+    "mypy>=1.0.0",
+]
+
+[project.scripts]
+texguardian = "texguardian.cli.main:app"
+
+[project.urls]
+Homepage = "https://github.com/arcAman07/TexGuardian"
+Documentation = "https://github.com/arcAman07/TexGuardian/blob/main/docs/GUIDE.md"
+Repository = "https://github.com/arcAman07/TexGuardian"
+Changelog = "https://github.com/arcAman07/TexGuardian/blob/main/CHANGELOG.md"
+Issues = "https://github.com/arcAman07/TexGuardian/issues"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/texguardian"]
+
+[tool.hatch.build.targets.sdist]
+include = [
+    "src/",
+    "templates/",
+    "tests/",
+    "docs/GUIDE.md",
+    "demo/",
+    "LICENSE",
+    "README.md",
+    "CHANGELOG.md",
+    "CONTRIBUTING.md",
+    "pyproject.toml",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "W", "UP"]
+ignore = ["E501"]
+
+[tool.ruff.lint.per-file-ignores]
+"src/texguardian/cli/main.py" = ["E402"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+
+[tool.mypy]
+python_version = "3.11"
+strict = true

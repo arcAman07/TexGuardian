@@ -1,0 +1,41 @@
+# TexGuardian Configuration - Position Paper Example
+
+project:
+  main_tex: "position_paper.tex"
+  output_dir: "build"
+
+providers:
+  default: "bedrock"
+  bedrock:
+    region: "us-east-1"
+    # Credentials loaded from environment variables (AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY)
+    # Or use profile: "your-profile-name" if using AWS profiles
+
+models:
+  default: "claude opus 4.5"
+  vision: "claude opus 4.5"
+
+safety:
+  max_changed_lines: 50
+  max_rounds: 10
+  max_visual_rounds: 10
+  allowlist:
+    - "*.tex"
+    - "*.bib"
+    - "*.sty"
+    - "*.cls"
+  denylist:
+    - ".git/**"
+    - "*.pdf"
+    - "build/**"
+
+latex:
+  compiler: "/Users/arcaman07/Library/TinyTeX/bin/universal-darwin/latexmk"
+  engine: "pdflatex"
+  output_dir: "build"
+
+visual:
+  dpi: 150
+  diff_threshold: 5.0  # Percentage for convergence check
+  pixel_threshold: 15  # Per-pixel intensity difference (0-255)
+  max_pages_to_analyze: 0  # 0 = analyze all pages

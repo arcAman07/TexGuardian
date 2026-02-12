@@ -1,4 +1,4 @@
-# TexGuardian Demo — VHS tape
+# TexGuardian Demo — VHS tape (1 minute)
 # Run: cd demo/ && vhs demo.tape
 
 Output demo.gif
@@ -18,17 +18,17 @@ Type "cd test_run"
 Enter
 Sleep 500ms
 
-# 1. Start texguardian chat
+# 1. Start texguardian chat — welcome panel with paper stats
 Type "texguardian chat"
 Enter
 Sleep 4s
 
-# 2. Run verify — show all issues
-Type "/verify"
+# 2. Set venue — downloads ICLR 2025 style files
+Type "/venue ICLR 2025"
 Enter
-Sleep 3s
+Sleep 10s
 
-# 3. Fix figures
+# 3. Fix figures — LLM patches overflow issues
 Type "/figures fix"
 Enter
 Sleep 12s
@@ -38,7 +38,7 @@ Type "a"
 Enter
 Sleep 3s
 
-# 4. Fix tables
+# 4. Fix tables — LLM converts hline to booktabs
 Type "/tables fix"
 Enter
 Sleep 12s
@@ -48,18 +48,13 @@ Type "a"
 Enter
 Sleep 3s
 
-# 5. Natural language — remove TODOs
-Type "Please remove all TODO, FIXME, and XXX comments from the paper"
+# 5. Compile — build the final PDF
+Type "/compile"
 Enter
-Sleep 12s
+Sleep 8s
 
-# Approve patches
-Type "a"
-Enter
-Sleep 3s
-
-# 6. Re-verify — show progress
-Type "/verify"
+# 6. Open the compiled PDF
+Type "/bash open build/demo_paper.pdf"
 Enter
 Sleep 3s
 

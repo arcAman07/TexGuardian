@@ -21,18 +21,62 @@ texguardian doctor
 | Tool | Purpose | Install (macOS) | Install (Ubuntu) |
 |------|---------|-----------------|------------------|
 | Python 3.11+ | Runtime | `brew install python@3.11` | `apt install python3.11` |
-| latexmk + pdflatex | LaTeX compilation | `brew install --cask mactex-no-gui` | `apt install texlive-full` |
+| latexmk + pdflatex | LaTeX compilation | See LaTeX options below | See LaTeX options below |
 | pdftoppm (poppler) | PDF rendering for `/polish_visual` | `brew install poppler` | `apt install poppler-utils` |
 
-**Lightweight LaTeX option** (TinyTeX, ~250 MB instead of 4 GB):
+### LaTeX Installation Options
+
+#### Option A: Full TeX Live (~4 GB)
+
+The full distribution includes every LaTeX package. You'll never hit a missing-package error.
 
 ```bash
-# macOS / Linux
+# macOS
+brew install --cask mactex-no-gui
+
+# Ubuntu/Debian
+sudo apt install texlive-full
+
+# Verify
+latexmk --version
+pdflatex --version
+```
+
+#### Option B: TinyTeX (~250 MB) — recommended for lightweight setups
+
+[TinyTeX](https://yihui.org/tinytex/) is a minimal, portable TeX Live distribution. It includes `latexmk`, `pdflatex`, and a small set of core packages. Missing packages are auto-installed on first compile, or you can install them manually with `tlmgr`.
+
+```bash
+# Install TinyTeX (macOS / Linux)
 curl -sL "https://yihui.org/tinytex/install-bin-unix.sh" | sh
 
-# Then add to PATH:
+# Add to PATH — put this in your ~/.zshrc or ~/.bashrc:
 export PATH="$HOME/Library/TinyTeX/bin/universal-darwin:$PATH"  # macOS
 export PATH="$HOME/.TinyTeX/bin/x86_64-linux:$PATH"             # Linux
+
+# Verify
+latexmk --version
+pdflatex --version
+
+# Install common packages used by academic papers:
+tlmgr install booktabs natbib hyperref pgfplots xcolor float geometry \
+              amsmath amssymb graphicx tikz caption subcaption
+
+# Update all packages:
+tlmgr update --all
+```
+
+TinyTeX is a good choice for:
+- CI/CD pipelines (fast install, small footprint)
+- Machines where you don't want a 4 GB TeX Live install
+- Docker containers
+- Quick setup on a new machine
+
+If you hit a "missing .sty" error during compilation, install the package:
+
+```bash
+tlmgr install <package-name>
+# Example: tlmgr install algorithm2e
 ```
 
 ## Configure Credentials

@@ -66,8 +66,37 @@ TexGuardian needs LaTeX and Poppler installed on your system for compilation and
 | Tool | Purpose | Install |
 |------|---------|---------|
 | Python 3.11+ | Runtime | [python.org](https://python.org) |
-| LaTeX (latexmk) | Compilation | `brew install --cask mactex-no-gui` or [TinyTeX](https://yihui.org/tinytex/) |
-| Poppler | PDF rendering for visual checks | `brew install poppler` |
+| LaTeX (latexmk) | Compilation | See below |
+| Poppler | PDF rendering for visual checks | `brew install poppler` (macOS) / `apt install poppler-utils` (Ubuntu) |
+
+#### LaTeX installation
+
+**Option A: Full TeX Live (~4 GB)** — includes every package, no missing-package issues:
+
+```bash
+# macOS
+brew install --cask mactex-no-gui
+
+# Ubuntu/Debian
+sudo apt install texlive-full
+```
+
+**Option B: TinyTeX (~250 MB)** — lightweight alternative, installs only what you need:
+
+```bash
+# macOS / Linux
+curl -sL "https://yihui.org/tinytex/install-bin-unix.sh" | sh
+
+# Add to PATH (add to your ~/.zshrc or ~/.bashrc):
+export PATH="$HOME/Library/TinyTeX/bin/universal-darwin:$PATH"  # macOS
+export PATH="$HOME/.TinyTeX/bin/x86_64-linux:$PATH"             # Linux
+
+# Install packages needed by your paper (TinyTeX auto-installs on first compile,
+# or install manually):
+tlmgr install booktabs natbib hyperref pgfplots xcolor float geometry
+```
+
+TinyTeX is recommended for CI pipelines, lightweight setups, or if you don't want a 4 GB install. See [yihui.org/tinytex](https://yihui.org/tinytex/) for details.
 
 ### Verify installation
 

@@ -12,8 +12,7 @@
 \pgfplotsset{compat=1.18}
 \usetikzlibrary{arrows.meta,positioning,calc}
 
-% DELIBERATE BUG: Title is oversized
-\title{\fontsize{30}{34}\selectfont Scaling Sparse Mixture-of-Experts for\\[16pt]Long-Context Document Understanding}
+\title{Scaling Sparse Mixture-of-Experts for Long-Context Document Understanding}
 \author{
     Alice Researcher$^{1}$ \and Bob Scientist$^{2}$ \and Carol Engineer$^{1}$\\
     $^{1}$Stanford University, $^{2}$MIT\\
@@ -24,34 +23,24 @@
 \begin{document}
 \maketitle
 
-% DELIBERATE BUG: Abstract heading wrong — uses \section* instead of \begin{abstract}
-\section*{\LARGE Abstract}
-\vspace{-5pt}
-{\small
-% TODO: Rewrite this abstract before camera-ready submission
+\begin{abstract}
 We propose Sparse-MoE-Doc, a mixture-of-experts architecture for long-context
 document understanding that scales to 128K tokens with sub-quadratic complexity.
 Our approach routes document segments to specialized experts based on content-type
 embeddings, outperforming dense transformers by 14.3\% on DocQA while using
 3.2$\times$ fewer FLOPs.
-}
-
-\vspace{24pt}  % DELIBERATE BUG: Excessive space after abstract
+\end{abstract}
 
 \section{Introduction}
 
-Long-context document understanding remains challenging \cite{devlin2019bert}.
+Long-context document understanding remains challenging \citep{devlin2019bert}.
 Modern documents contain heterogeneous content that requires different strategies
-\cite{vaswani2017attention, brown2020language}. MoE architectures
-\cite{shazeer2017outrageously} offer conditional computation but existing
-approaches do not account for document structure \cite{nonexistent_paper_2024}.
-Recent retrieval-augmented methods \cite{hallucinated_reference_2023} and
-structure-aware routing \cite{also_fake_citation_2025} motivate our approach.
-% FIXME: Need to strengthen this motivation paragraph
+\citep{vaswani2017attention, brown2020language}. MoE architectures
+\citep{shazeer2017outrageously} offer conditional computation but existing
+approaches do not account for document structure.
 Our contributions: (1) structure-aware routing, (2) sub-quadratic attention
-scaling to 128K tokens, (3) evaluation on four benchmarks (Figure~\ref{fig:nonexistent_figure}).
+scaling to 128K tokens, (3) evaluation on four benchmarks (Figure~\ref{fig:pipeline}).
 
-% DELIBERATE BUG: Table overflows RIGHT margin — 9 columns with long headers
 \begin{table}[H]
     \caption{Comparison of document understanding approaches. $\checkmark$ = supported, $\times$ = not supported.}
     \label{tab:comparison}
@@ -73,7 +62,6 @@ scaling to 128K tokens, (3) evaluation on four benchmarks (Figure~\ref{fig:nonex
     \end{tabular}
 \end{table}
 
-% DELIBERATE BUG: Architecture diagram overflows — nodes spread past margins
 \begin{figure}[H]
     \noindent
     \hspace{-1cm}%
@@ -138,9 +126,7 @@ scaling to 128K tokens, (3) evaluation on four benchmarks (Figure~\ref{fig:nonex
 We partition document $D$ into segments $S = \{s_1, \ldots, s_M\}$ with content
 types $c_i \in \{$prose, table, equation, caption$\}$. The routing function is:
 $g(s_i) = \text{TopK}(\text{softmax}(W_r \cdot \text{pool}(s_i) + b_r), k)$.
-% TODO: Add the load balancing loss equation here
 
-% DELIBERATE BUG: Expert specialization chart — overflows RIGHT (1.5x width)
 \begin{figure}[H]
     \noindent
     \begin{tikzpicture}
@@ -173,7 +159,6 @@ $g(s_i) = \text{TopK}(\text{softmax}(W_r \cdot \text{pool}(s_i) + b_r), k)$.
 
 \section{Experiments}
 
-% DELIBERATE BUG: Results table overflows RIGHT margin (too many columns + \hline)
 \begin{table}[H]
     \caption{Main results. Best in \textbf{bold}, second best \underline{underlined}.}
     \label{tab:main_results}
@@ -197,9 +182,7 @@ $g(s_i) = \text{TopK}(\text{softmax}(W_r \cdot \text{pool}(s_i) + b_r), k)$.
 
 Our approach outperforms all baselines. The ablation in Table~\ref{tab:ablation}
 confirms that structure-aware routing is the most critical component ($-8.2$ F1).
-% XXX: Should we add a paragraph on retrieval-augmented approaches?
 
-% DELIBERATE BUG: Table with \hline instead of booktabs
 \begin{table}[H]
     \caption{Ablation study on DocQA.}
     \label{tab:ablation}
@@ -225,8 +208,8 @@ confirms that structure-aware routing is the most critical component ($-8.2$ F1)
 
 We presented Sparse-MoE-Doc, achieving state-of-the-art results on four benchmarks
 while using fewer FLOPs. Experts naturally specialize by content type
-\cite{zhang2019hibert, xu2020layoutlm, beltagy2020longformer, fedus2022switch,
-lepikhin2020gshard, radford2019language, talmor2019multiqa, another_missing_ref}.
+\citep{zhang2019hibert, xu2020layoutlm, beltagy2020longformer, fedus2022switch,
+lepikhin2020gshard, radford2019language, talmor2019multiqa}.
 
 \bibliographystyle{plainnat}
 \bibliography{demo_refs}

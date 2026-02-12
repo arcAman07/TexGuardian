@@ -5,6 +5,19 @@ All notable changes to TexGuardian will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.9] - 2025-02-13
+
+### Added
+
+- **TinyTeX documentation** in README and docs/INSTALL.md — lightweight (~250 MB) alternative to full TeX Live (~4 GB), with install commands, PATH setup, and `tlmgr` package management
+- **Recording tool explanations** in DEMO_SCRIPT.md — detailed how-it-works descriptions for macOS screen recording, VHS automated terminal recording, and asciinema interactive recording
+
+### Changed
+
+- **Demo paper cleaned up** — title, abstract, citations, and TODO markers fixed so the demo focuses on figure/table issues for the review pipeline to find
+- Updated demo scripts (`DEMO_SCRIPT.md`, `demo.tape`) to showcase the 7-step `/review full` pipeline as the centerpiece
+- Recompiled `error_paper.pdf` with TinyTeX from cleaned sources
+
 ## [0.1.8] - 2025-02-13
 
 ### Added

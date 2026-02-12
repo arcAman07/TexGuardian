@@ -53,7 +53,7 @@ async def run_repl(session: SessionState, console: Console) -> None:
     # Print welcome message
     _print_welcome(session, console)
 
-    # Auto-verify on startup
+    # Auto-verify on startup — show issues before the user types anything
     _auto_verify_on_startup(session, console)
 
     # Main REPL loop

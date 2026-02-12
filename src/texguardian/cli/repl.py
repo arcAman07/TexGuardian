@@ -68,17 +68,10 @@ async def run_repl(session: SessionState, console: Console) -> None:
             if not user_input:
                 continue
 
-            # Echo input in a styled panel so it's clearly visible
-            # in scrollback — like Claude Code's user message bubbles.
+            # Echo slash commands so they're visible in scrollback;
+            # natural language input is already visible at the prompt.
             if user_input.startswith("/"):
                 console.print(f"\n[bold cyan]{escape(user_input)}[/bold cyan]")
-            else:
-                console.print()
-                console.print(Panel.fit(
-                    f"[bold]{escape(user_input)}[/bold]",
-                    border_style="bright_cyan",
-                    padding=(0, 2),
-                ))
 
             # Handle special commands
             if user_input.lower() in ("exit", "quit", "/exit", "/quit"):

@@ -7,9 +7,10 @@ until the paper reaches the threshold score or max iterations:
 3. Validate + fix citations
 4. Analyze + fix figures
 5. Analyze + fix tables
-6. Visual polish loop
-7. Loop back if score < threshold
-8. Final report
+6. Visual verification of structural fixes
+7. Visual polish loop
+8. Loop back if score < threshold
+9. Final report
 """
 
 from __future__ import annotations
@@ -115,7 +116,7 @@ class ReviewCommand(Command):
             console.print()
 
             # Step 1: Compile
-            console.print("[bold]Step 1/6:[/bold] Compiling LaTeX")
+            console.print("[bold]Step 1/7:[/bold] Compiling LaTeX")
             compile_ok = await self._step_compile(session, console, result)
             if not compile_ok:
                 console.print("[red]Compilation failed. Cannot continue.[/red]")
@@ -123,31 +124,36 @@ class ReviewCommand(Command):
 
             # Step 2: Run verification checks
             console.print(Rule(style="dim"))
-            console.print("[bold]Step 2/6:[/bold] Running Verification Checks")
+            console.print("[bold]Step 2/7:[/bold] Running Verification Checks")
             await self._step_verify(session, console, result)
 
             # Step 3: Validate and fix citations
             console.print(Rule(style="dim"))
-            console.print("[bold]Step 3/6:[/bold] Validating Citations")
+            console.print("[bold]Step 3/7:[/bold] Validating Citations")
             await self._step_citations(session, console, result, fix=True)
 
             # Step 4: Analyze and fix figures
             console.print(Rule(style="dim"))
-            console.print("[bold]Step 4/6:[/bold] Analyzing Figures")
+            console.print("[bold]Step 4/7:[/bold] Analyzing Figures")
             await self._step_figures(session, console, result, fix=True)
 
             # Step 5: Analyze and fix tables
             console.print(Rule(style="dim"))
-            console.print("[bold]Step 5/6:[/bold] Analyzing Tables")
+            console.print("[bold]Step 5/7:[/bold] Analyzing Tables")
             await self._step_tables(session, console, result, fix=True)
 
-            # Step 6: Visual polish (full mode only)
+            # Step 6: Visual verification of structural fixes
+            console.print(Rule(style="dim"))
+            console.print("[bold]Step 6/7:[/bold] Visual Verification of Fixes")
+            await self._step_visual_verify_fixes(session, console, result)
+
+            # Step 7: Visual polish (full mode only)
             console.print(Rule(style="dim"))
             if mode == "full":
-                console.print("[bold]Step 6/6:[/bold] Visual Polish Loop")
+                console.print("[bold]Step 7/7:[/bold] Visual Polish Loop")
                 await self._step_visual(session, console, result, custom_instruction=custom_instruction)
             else:
-                console.print("[bold]Step 6/6:[/bold] Visual Polish")
+                console.print("[bold]Step 7/7:[/bold] Visual Polish")
                 console.print("  [dim]Skipped (use 'full' mode to enable)[/dim]")
 
             # Calculate current score
@@ -297,8 +303,18 @@ class ReviewCommand(Command):
 
                 if fix and session.llm_client:
                     console.print("  [cyan]Generating citation fixes...[/cyan]")
-                    # Would generate patches here - simplified for now
-                    console.print("  [dim]Run '/citations fix' for detailed patches[/dim]")
+                    try:
+                        from texguardian.cli.commands.citations import (
+                            generate_and_apply_citation_fixes,
+                        )
+
+                        applied = await generate_and_apply_citation_fixes(
+                            session, console, auto_approve=True, print_output=False,
+                        )
+                        result.citations_fixed = applied
+                        result.patches_applied += applied
+                    except ImportError:
+                        console.print("  [dim]Run '/citations fix' for detailed patches[/dim]")
 
         except Exception as e:
             console.print(f"  [red]Error validating citations: {e}[/red]")
@@ -310,7 +326,7 @@ class ReviewCommand(Command):
         result: ReviewResult,
         fix: bool = False,
     ) -> None:
-        """Step 4: Analyze figures."""
+        """Step 4: Analyze and optionally fix figures."""
         from texguardian.latex.parser import LatexParser
 
         parser = LatexParser(session.project_root, session.config.project.main_tex)
@@ -338,8 +354,13 @@ class ReviewCommand(Command):
             console.print(f"  Found {len(figures)} figures")
             if issues > 0:
                 console.print(f"    [yellow]•[/yellow] {issues} potential issues (missing labels/captions)")
-                if fix:
-                    console.print("  [dim]Run '/figures fix' for detailed analysis and fixes[/dim]")
+                if fix and session.llm_client:
+                    from texguardian.cli.commands.figures import generate_and_apply_figure_fixes
+
+                    applied = await generate_and_apply_figure_fixes(
+                        session, console, auto_approve=True, print_output=False,
+                    )
+                    result.patches_applied += applied
             else:
                 console.print("    [green]✓[/green] All figures have labels and captions")
 
@@ -353,7 +374,7 @@ class ReviewCommand(Command):
         result: ReviewResult,
         fix: bool = False,
     ) -> None:
-        """Step 5: Analyze tables."""
+        """Step 5: Analyze and optionally fix tables."""
         from texguardian.latex.parser import LatexParser
 
         parser = LatexParser(session.project_root, session.config.project.main_tex)
@@ -381,13 +402,53 @@ class ReviewCommand(Command):
             console.print(f"  Found {len(tables)} tables")
             if issues > 0:
                 console.print(f"    [yellow]•[/yellow] {issues} potential issues")
-                if fix:
-                    console.print("  [dim]Run '/tables fix' for detailed analysis and fixes[/dim]")
+                if fix and session.llm_client:
+                    from texguardian.cli.commands.tables import generate_and_apply_table_fixes
+
+                    applied = await generate_and_apply_table_fixes(
+                        session, console, auto_approve=True, print_output=False,
+                    )
+                    result.patches_applied += applied
             else:
                 console.print("    [green]✓[/green] All tables look good")
 
         except Exception as e:
             console.print(f"  [red]Error analyzing tables: {e}[/red]")
+
+    async def _step_visual_verify_fixes(
+        self,
+        session: SessionState,
+        console: Console,
+        result: ReviewResult,
+    ) -> None:
+        """Step 6: Visual verification of structural fixes."""
+        if result.patches_applied == 0:
+            console.print("  [dim]No patches were applied — skipping visual verification[/dim]")
+            return
+
+        from texguardian.visual.verifier import VisualVerifier
+
+        try:
+            verifier = VisualVerifier(session)
+            max_rounds = min(3, session.config.safety.max_visual_rounds)
+
+            visual_result = await verifier.run_loop(
+                max_rounds=max_rounds,
+                console=console,
+                focus_areas=["figures", "tables", "captions", "labels"],
+            )
+
+            result.patches_applied += visual_result.patches_applied
+
+            console.print("  Visual verification of fixes complete:")
+            console.print(f"    Rounds: {visual_result.rounds}")
+            console.print(f"    Score: {visual_result.quality_score}/100")
+            console.print(f"    Patches: {visual_result.patches_applied}")
+            if visual_result.stopped_reason:
+                console.print(f"    Stopped: {visual_result.stopped_reason}")
+
+        except Exception as e:
+            console.print(f"  [red]Error in visual verification: {e}[/red]")
 
     async def _step_visual(
         self,

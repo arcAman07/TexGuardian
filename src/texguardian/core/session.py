@@ -61,6 +61,9 @@ class SessionState:
     # Watch mode
     watch_enabled: bool = False
 
+    # Quiet mode — suppress LLM streaming output
+    quiet: bool = False
+
     # Quality tracking for auto-fix
     quality_scores: list[int] = field(default_factory=list)
     consecutive_regressions: int = 0

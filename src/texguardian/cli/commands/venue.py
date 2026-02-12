@@ -375,21 +375,32 @@ class VenueCommand(Command):
                 return False
 
             files = response.json()
-            downloaded = []
 
+            # Two-pass filtering: prefer files matching both venue AND year
+            year_matched = []
+            venue_matched = []
             for file_info in files:
                 name = file_info.get("name", "")
-                # Check if file matches venue/year pattern
                 if any(name.endswith(ext) for ext in [".sty", ".bst", ".cls"]):
-                    if venue in name.lower() or year in name:
-                        # Download this file
-                        download_url = file_info.get("download_url")
-                        if download_url:
-                            file_response = await client.get(download_url)
-                            if file_response.status_code == 200:
-                                (target_dir / name).write_bytes(file_response.content)
-                                downloaded.append(name)
-                                console.print(f"    [green]✓[/green] Downloaded: {name}")
+                    if venue in name.lower() and year in name:
+                        year_matched.append(file_info)
+                    elif venue in name.lower():
+                        venue_matched.append(file_info)
+
+            targets = year_matched if year_matched else venue_matched
+            if targets and not year_matched:
+                console.print(f"    [yellow]No {year} files found, using latest available[/yellow]")
+
+            downloaded = []
+            for file_info in targets:
+                name = file_info.get("name", "")
+                download_url = file_info.get("download_url")
+                if download_url:
+                    file_response = await client.get(download_url)
+                    if file_response.status_code == 200:
+                        (target_dir / name).write_bytes(file_response.content)
+                        downloaded.append(name)
+                        console.print(f"    [green]✓[/green] Downloaded: {name}")
 
             return len(downloaded) > 0
 

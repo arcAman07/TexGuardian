@@ -5,6 +5,23 @@ All notable changes to TexGuardian will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.8] - 2025-02-13
+
+### Added
+
+- **Compile-verify-fix loops** for `/figures fix`, `/tables fix`, and `/review`:
+  - After structural patches (missing labels, bad captions, etc.), the pipeline now recompiles the paper, renders the PDF, sends pages to the vision model, and loops to catch residual issues
+  - `/figures fix` now runs a visual verification loop (Step 3) using `VisualVerifier.run_loop()` with figure-focused analysis
+  - `/tables fix` now runs a visual verification loop (Step 3) using `VisualVerifier.run_loop()` with table-focused analysis
+  - `/review` pipeline expanded from 6 to 7 steps: new Step 6 verifies structural fixes visually before the general visual polish in Step 7
+- **`visual_verify` parameter** on `generate_and_apply_figure_fixes()` and `generate_and_apply_table_fixes()` — when `True`, triggers a post-fix visual verification loop
+- **Focused visual analysis** — visual verification in figures/tables commands uses targeted `focus_areas` (e.g., "figure placement", "table alignment", "booktabs") to steer the vision model
+
+### Changed
+
+- `/review` pipeline renumbered from 6 steps to 7 steps (Steps 1–5 unchanged, Step 6 = visual verification of fixes, Step 7 = general visual polish)
+- `_visual_verify_figures()` in `FiguresCommand` replaced stub implementation with full `VisualVerifier.run_loop()` integration
+
 ## [0.1.0] - 2025-02-12
 
 ### Added

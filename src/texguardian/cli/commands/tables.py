@@ -203,6 +203,9 @@ class TablesCommand(Command):
         if fix_mode and verification_result["issues"]:
             console.print("\n[bold]Step 2: Fixing Issues[/bold]")
             await self._fix_tables(session, console, verification_result)
+
+            console.print("\n[bold]Step 3: Visual Verification[/bold]")
+            await self._visual_verify_tables(session, console)
         elif verification_result["issues"] and not analyze_mode:
             console.print(f"\n[yellow]{len(verification_result['issues'])} issues found.[/yellow]")
             console.print("[dim]Run '/tables fix' to auto-fix issues[/dim]")
@@ -381,6 +384,37 @@ class TablesCommand(Command):
                 "\n[yellow]No diff patches found in response.[/yellow]"
             )
 
+    async def _visual_verify_tables(
+        self,
+        session: SessionState,
+        console: Console,
+    ) -> None:
+        """Visual verification of tables via compile-render-vision loop."""
+        from texguardian.visual.verifier import VisualVerifier
+
+        try:
+            verifier = VisualVerifier(session)
+            result = await verifier.run_loop(
+                max_rounds=session.config.safety.max_visual_rounds,
+                console=console,
+                focus_areas=[
+                    "tables",
+                    "table alignment",
+                    "table formatting",
+                    "booktabs",
+                ],
+            )
+
+            console.print("\n  Visual verification complete:")
+            console.print(f"    Rounds: {result.rounds}")
+            console.print(f"    Score: {result.quality_score}/100")
+            console.print(f"    Patches applied: {result.patches_applied}")
+            if result.stopped_reason:
+                console.print(f"    Stopped: {result.stopped_reason}")
+
+        except Exception as e:
+            console.print(f"  [red]Error in visual verification: {e}[/red]")
+
     async def _custom_fix_tables(
         self,
         session: SessionState,
@@ -542,3 +576,110 @@ class TablesCommand(Command):
     def get_completions(self, partial: str) -> list[str]:
         """Get argument completions."""
         return ["fix", "analyze"]
+
+
+async def generate_and_apply_table_fixes(
+    session: SessionState,
+    console: Console,
+    *,
+    auto_approve: bool = False,
+    print_output: bool = True,
+    visual_verify: bool = False,
+) -> int:
+    """Reusable table-fix pipeline callable from ``/review``.
+
+    Returns the number of patches applied.
+    """
+    from texguardian.latex.parser import LatexParser
+
+    parser = LatexParser(session.project_root, session.config.project.main_tex)
+
+    # Verify tables
+    tables = parser.extract_tables_with_details()
+    content = session.main_tex_path.read_text()
+    tab_refs = re.findall(r'\\ref\{(tab:[^}]+)\}', content)
+
+    issues: list[dict] = []
+    for tab in tables:
+        label = tab.get("label", "")
+        caption = tab.get("caption", "")
+        ref_count = tab_refs.count(label) if label else 0
+
+        if not label:
+            issues.append({"type": "missing_label", "table": caption[:50] if caption else "Unknown table", "severity": "error"})
+        elif ref_count == 0:
+            issues.append({"type": "unreferenced", "table": label, "severity": "warning"})
+
+        if not caption or len(caption) < 10:
+            issues.append({"type": "poor_caption", "table": label or "Unknown", "severity": "warning"})
+
+        table_content = tab.get("content", "")
+        if "\\hline" in table_content and "\\toprule" not in table_content:
+            issues.append({"type": "no_booktabs", "table": label or "Unknown", "severity": "info"})
+
+    if not issues:
+        console.print("  [green]✓[/green] No table issues to fix")
+        return 0
+
+    if not session.llm_client:
+        console.print("  [red]LLM client not available[/red]")
+        return 0
+
+    # Build prompt
+    issues_text = [f"- {i['type']}: {i['table']} ({i['severity']})" for i in issues]
+
+    table_pattern = r'\\begin\{table\}.*?\\end\{table\}'
+    table_code = "\n\n".join(re.findall(table_pattern, content, re.DOTALL)[:10])
+
+    filename = session.main_tex_path.name
+    prompt = TABLE_FIX_PROMPT.format(
+        filename=filename,
+        issues="\n".join(issues_text),
+        table_code=table_code,
+    )
+
+    console.print("  [cyan]Generating table fixes...[/cyan]")
+
+    from texguardian.llm.streaming import stream_llm
+
+    response_text = await stream_llm(
+        session.llm_client,
+        messages=[{"role": "user", "content": prompt}],
+        console=console,
+        max_tokens=4000,
+        temperature=0.3,
+        print_output=print_output,
+    )
+
+    if session.context:
+        session.context.add_assistant_message(response_text)
+
+    from texguardian.cli.approval import interactive_approval
+    from texguardian.patch.parser import extract_patches
+
+    patches = extract_patches(response_text)
+    if not patches:
+        console.print("  [yellow]No table patches generated[/yellow]")
+        return 0
+
+    applied = await interactive_approval(patches, session, console, auto_approve=auto_approve)
+    if applied > 0:
+        console.print(f"  [green]Applied {applied} table fix(es)[/green]")
+
+    # Phase 2: Visual verification loop
+    if visual_verify and applied > 0:
+        from texguardian.visual.verifier import VisualVerifier
+
+        console.print("  [cyan]Running visual verification of table fixes...[/cyan]")
+        try:
+            verifier = VisualVerifier(session)
+            vresult = await verifier.run_loop(
+                max_rounds=session.config.safety.max_visual_rounds,
+                console=console,
+                focus_areas=["tables", "table alignment", "table formatting", "booktabs"],
+            )
+            applied += vresult.patches_applied
+        except Exception as e:
+            console.print(f"  [red]Visual verification error: {e}[/red]")
+
+    return applied

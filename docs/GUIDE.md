@@ -165,16 +165,18 @@ Unified figure pipeline: verify, fix, analyze.
 
 **Fix step**: Sends issues + figure code to LLM. LLM generates unified diff patches. You approve via the standard Apply/Review/No flow.
 
+**Visual verification step**: After structural fixes are applied, the pipeline recompiles the paper, renders the PDF, and sends pages to the vision model with figure-focused analysis (placement, captions, labels). If the vision model finds remaining issues, it generates patches and loops until converged or max rounds reached.
+
 **Analyze step**: LLM scores each figure on clarity, caption quality, necessity, presentation, integration (0-100 each).
 
 #### `/tables` (aliases: `/t`)
 
-Same pipeline as `/figures` but for `\begin{table}...\end{table}` blocks.
+Same pipeline as `/figures` but for `\begin{table}...\end{table}` blocks. The fix mode includes a visual verification step that checks table alignment, formatting, and booktabs usage via the vision model.
 
 | Usage | Behavior |
 |-------|----------|
 | `/tables` | Verify only |
-| `/tables fix` | Auto-fix issues |
+| `/tables fix` | Auto-fix issues + visual verification |
 | `/tables analyze` | AI quality analysis |
 | `/tables fix formatting` | Custom instruction |
 
@@ -297,19 +299,28 @@ Uses the engine and timeout from `texguardian.yaml`. Stores result in `session.l
 
 #### `/review` (aliases: `/full`, `/pipeline`)
 
-Full pipeline: compile → verify → fix → repeat until clean or max rounds reached.
+Full 7-step pipeline that loops until the paper reaches the target score or max rounds:
+
+1. **Compile** — build the PDF with latexmk
+2. **Verify** — run all custom checks and regex validations
+3. **Citations** — validate against CrossRef/Semantic Scholar, fix hallucinations
+4. **Figures** — analyze and fix figure issues (labels, captions, sizing)
+5. **Tables** — analyze and fix table issues (formatting, booktabs)
+6. **Visual verification of fixes** — recompile, render, and send to vision model to confirm structural fixes look correct (skipped if no patches were applied)
+7. **Visual polish** — full visual loop for layout issues (full mode only; skipped in quick mode)
 
 ```
 >>> /review
-Round 1: Compiling... ✓
-Round 1: Verifying... 3 issues
-Round 1: Fixing... 2 patches applied
-Round 2: Compiling... ✓
-Round 2: Verifying... 1 issue
-Round 2: Fixing... 1 patch applied
-Round 3: Compiling... ✓
-Round 3: Verifying... 0 issues
-✓ All checks pass
+Round 1/5
+  Step 1/7: Compiling LaTeX ... ✓
+  Step 2/7: Running Verification Checks
+  Step 3/7: Validating Citations
+  Step 4/7: Analyzing Figures
+  Step 5/7: Analyzing Tables
+  Step 6/7: Visual Verification of Fixes
+  Step 7/7: Visual Polish Loop
+  Overall Score: 85/100
+Round 2/5 ...
 ```
 
 Respects `safety.max_rounds` limit and stops on consecutive quality regressions.

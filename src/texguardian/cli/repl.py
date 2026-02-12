@@ -222,60 +222,85 @@ async def _handle_chat(
 
     max_tokens = session.llm_client.max_output_tokens
 
-    # Start with a "Thinking..." panel
-    live = Live(
-        Panel(
-            "[dim]Thinking...[/dim]",
-            border_style="dim",
-            padding=(0, 2),
-        ),
-        console=console,
-        refresh_per_second=8,
-        vertical_overflow="visible",
-    )
-    live.start()
+    if session.quiet:
+        # Quiet mode: collect LLM output without streaming to the console
+        with console.status("[dim]Generating response...[/dim]", spinner="dots"):
+            try:
+                async for chunk in session.llm_client.stream(
+                    messages=messages,
+                    system=system_prompt,
+                    max_tokens=max_tokens,
+                    temperature=0.7,
+                ):
+                    if chunk.content:
+                        full_response.append(chunk.content)
+            except Exception as e:
+                error_occurred = True
+                console.print(f"[red]Error: {e}[/red]")
 
-    try:
-        async for chunk in session.llm_client.stream(
-            messages=messages,
-            system=system_prompt,
-            max_tokens=max_tokens,
-            temperature=0.7,
-        ):
-            if chunk.content:
-                full_response.append(chunk.content)
-                text = "".join(full_response)
-                live.update(Panel(
-                    text,
-                    border_style="dim",
-                    padding=(0, 2),
-                ))
-
-    except Exception as e:
-        error_occurred = True
-        live.update(Panel(
-            f"[red]Error: {e}[/red]\n"
-            "[dim]This may be a network issue or API rate limit. Try again.[/dim]",
-            border_style="red",
-            padding=(0, 2),
-        ))
-    finally:
-        # Final render with Markdown formatting for a polished look
         response_text = "".join(full_response)
         if response_text and not error_occurred:
-            try:
-                live.update(Panel(
-                    Markdown(response_text),
-                    border_style="dim",
-                    padding=(1, 2),
-                ))
-            except Exception:
-                pass  # Keep the plain text panel if Markdown fails
-        live.stop()
+            console.print(Panel(
+                Markdown(response_text),
+                border_style="dim",
+                padding=(1, 2),
+            ))
+        console.print()
+    else:
+        # Normal mode: live-stream into a Rich panel
+        live = Live(
+            Panel(
+                "[dim]Thinking...[/dim]",
+                border_style="dim",
+                padding=(0, 2),
+            ),
+            console=console,
+            refresh_per_second=8,
+            vertical_overflow="visible",
+        )
+        live.start()
 
-    # Breathing room after response panel
-    console.print()
-    console.print()
+        try:
+            async for chunk in session.llm_client.stream(
+                messages=messages,
+                system=system_prompt,
+                max_tokens=max_tokens,
+                temperature=0.7,
+            ):
+                if chunk.content:
+                    full_response.append(chunk.content)
+                    text = "".join(full_response)
+                    live.update(Panel(
+                        text,
+                        border_style="dim",
+                        padding=(0, 2),
+                    ))
+
+        except Exception as e:
+            error_occurred = True
+            live.update(Panel(
+                f"[red]Error: {e}[/red]\n"
+                "[dim]This may be a network issue or API rate limit. Try again.[/dim]",
+                border_style="red",
+                padding=(0, 2),
+            ))
+        finally:
+            # Final render with Markdown formatting for a polished look
+            response_text = "".join(full_response)
+            if response_text and not error_occurred:
+                try:
+                    live.update(Panel(
+                        Markdown(response_text),
+                        border_style="dim",
+                        padding=(1, 2),
+                    ))
+                except Exception:
+                    pass  # Keep the plain text panel if Markdown fails
+            live.stop()
+
+        # Breathing room after response panel
+        console.print()
+        console.print()
 
     # Add assistant response to context
     if response_text:

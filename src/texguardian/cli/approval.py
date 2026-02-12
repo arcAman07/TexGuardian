@@ -38,14 +38,22 @@ async def interactive_approval(
     patches: list[Patch],
     session: SessionState,
     console: Console,
+    *,
+    auto_approve: bool = False,
 ) -> int:
     """
     Simple 3-option approval for patches.
 
     Returns number of patches applied.
+
+    When *auto_approve* is True the interactive prompt is skipped and all
+    patches are applied immediately (used by ``/review`` auto-fix).
     """
     if not patches:
         return 0
+
+    if auto_approve:
+        return await _apply_all_patches(patches, session, console)
 
     console.print(f"\n[bold yellow]Found {len(patches)} patch(es):[/bold yellow]\n")
 

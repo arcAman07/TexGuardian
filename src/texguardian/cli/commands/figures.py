@@ -442,24 +442,31 @@ class FiguresCommand(Command):
         session: SessionState,
         console: Console,
     ) -> None:
-        """Visual verification of figures."""
-        # This would integrate with the visual verifier
-        # For now, just compile and check
-        from texguardian.latex.compiler import LatexCompiler
+        """Visual verification of figures via compile-render-vision loop."""
+        from texguardian.visual.verifier import VisualVerifier
 
-        compiler = LatexCompiler(session.config)
-        console.print("  Compiling to check figure rendering...")
+        try:
+            verifier = VisualVerifier(session)
+            result = await verifier.run_loop(
+                max_rounds=session.config.safety.max_visual_rounds,
+                console=console,
+                focus_areas=[
+                    "figures",
+                    "figure placement",
+                    "figure captions",
+                    "figure labels",
+                ],
+            )
 
-        result = await compiler.compile(
-            session.main_tex_path,
-            session.output_dir,
-        )
+            console.print("\n  Visual verification complete:")
+            console.print(f"    Rounds: {result.rounds}")
+            console.print(f"    Score: {result.quality_score}/100")
+            console.print(f"    Patches applied: {result.patches_applied}")
+            if result.stopped_reason:
+                console.print(f"    Stopped: {result.stopped_reason}")
 
-        if result.success:
-            console.print("  [green]✓[/green] Figures compiled successfully")
-            # Could add PDF rendering and visual diff here
-        else:
-            console.print("  [red]✗[/red] Compilation failed - check figure code")
+        except Exception as e:
+            console.print(f"  [red]Error in visual verification: {e}[/red]")
 
     async def _analyze_figures(
         self,
@@ -573,3 +580,106 @@ class FiguresCommand(Command):
     def get_completions(self, partial: str) -> list[str]:
         """Get argument completions."""
         return ["fix", "analyze"]
+
+
+async def generate_and_apply_figure_fixes(
+    session: SessionState,
+    console: Console,
+    *,
+    auto_approve: bool = False,
+    print_output: bool = True,
+    visual_verify: bool = False,
+) -> int:
+    """Reusable figure-fix pipeline callable from ``/review``.
+
+    Returns the number of patches applied.
+    """
+    from texguardian.latex.parser import LatexParser
+
+    parser = LatexParser(session.project_root, session.config.project.main_tex)
+
+    # Verify figures
+    figures = parser.extract_figures_with_details()
+    fig_refs = parser.extract_figure_refs()
+
+    issues: list[dict] = []
+    for fig in figures:
+        label = fig.get("label", "")
+        caption = fig.get("caption", "")
+        ref_count = fig_refs.count(label) if label else 0
+
+        if not label:
+            issues.append({"type": "missing_label", "figure": caption[:50] if caption else "Unknown figure", "severity": "error"})
+        elif ref_count == 0:
+            issues.append({"type": "unreferenced", "figure": label, "severity": "warning"})
+
+        if not caption or len(caption) < 20:
+            issues.append({"type": "poor_caption", "figure": label or "Unknown", "severity": "warning"})
+
+    if not issues:
+        console.print("  [green]✓[/green] No figure issues to fix")
+        return 0
+
+    if not session.llm_client:
+        console.print("  [red]LLM client not available[/red]")
+        return 0
+
+    # Build prompt
+    issues_text = [f"- {i['type']}: {i['figure']} ({i['severity']})" for i in issues]
+
+    content = session.main_tex_path.read_text()
+    figure_pattern = r'\\begin\{figure\}.*?\\end\{figure\}'
+    figure_code = "\n\n".join(re.findall(figure_pattern, content, re.DOTALL)[:10])
+
+    filename = session.main_tex_path.name
+    prompt = FIGURE_FIX_PROMPT.format(
+        filename=filename,
+        issues="\n".join(issues_text),
+        figure_code=figure_code,
+    )
+
+    console.print("  [cyan]Generating figure fixes...[/cyan]")
+
+    from texguardian.llm.streaming import stream_llm
+
+    response_text = await stream_llm(
+        session.llm_client,
+        messages=[{"role": "user", "content": prompt}],
+        console=console,
+        max_tokens=4000,
+        temperature=0.3,
+        print_output=print_output,
+    )
+
+    if session.context:
+        session.context.add_assistant_message(response_text)
+
+    from texguardian.cli.approval import interactive_approval
+    from texguardian.patch.parser import extract_patches
+
+    patches = extract_patches(response_text)
+    if not patches:
+        console.print("  [yellow]No figure patches generated[/yellow]")
+        return 0
+
+    applied = await interactive_approval(patches, session, console, auto_approve=auto_approve)
+    if applied > 0:
+        console.print(f"  [green]Applied {applied} figure fix(es)[/green]")
+
+    # Phase 2: Visual verification loop
+    if visual_verify and applied > 0:
+        from texguardian.visual.verifier import VisualVerifier
+
+        console.print("  [cyan]Running visual verification of figure fixes...[/cyan]")
+        try:
+            verifier = VisualVerifier(session)
+            vresult = await verifier.run_loop(
+                max_rounds=session.config.safety.max_visual_rounds,
+                console=console,
+                focus_areas=["figures", "figure placement", "figure captions", "figure labels"],
+            )
+            applied += vresult.patches_applied
+        except Exception as e:
+            console.print(f"  [red]Visual verification error: {e}[/red]")
+
+    return applied

@@ -182,6 +182,12 @@ def chat(
         "-m",
         help="Override default model",
     ),
+    quiet: bool = typer.Option(
+        False,
+        "--quiet",
+        "-q",
+        help="Suppress LLM streaming output, show only final results",
+    ),
 ) -> None:
     """Start interactive chat session for your LaTeX paper."""
     # Find config
@@ -217,6 +223,7 @@ def chat(
         config=config,
         paper_spec=paper_spec,
         context=ConversationContext(),
+        quiet=quiet,
     )
 
     # Warn about missing external tools before entering the REPL

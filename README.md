@@ -19,6 +19,7 @@
 </p>
 
 <p align="center">
+  <a href="https://pypi.org/project/texguardian/"><img src="https://img.shields.io/pypi/v/texguardian.svg" alt="PyPI"></a>
   <img src="https://img.shields.io/badge/python-3.11+-blue.svg" alt="Python 3.11+">
   <img src="https://img.shields.io/badge/license-MIT-green.svg" alt="MIT License">
   <img src="https://img.shields.io/badge/LLM-Claude%20Opus%204.5-orange.svg" alt="Claude Opus 4.5">
@@ -44,23 +45,29 @@ Whether you're preparing a NeurIPS submission, fixing figure overflows, anonymiz
 
 ## Installation
 
-### Prerequisites
+### From PyPI (recommended)
+
+```bash
+pip install texguardian
+```
+
+### From source
+
+```bash
+git clone https://github.com/arcAman07/TexGuardian.git
+cd TexGuardian
+pip install -e ".[dev]"
+```
+
+### External tools
+
+TexGuardian needs LaTeX and Poppler installed on your system for compilation and visual checks:
 
 | Tool | Purpose | Install |
 |------|---------|---------|
 | Python 3.11+ | Runtime | [python.org](https://python.org) |
 | LaTeX (latexmk) | Compilation | `brew install --cask mactex-no-gui` or [TinyTeX](https://yihui.org/tinytex/) |
 | Poppler | PDF rendering for visual checks | `brew install poppler` |
-
-### Install TexGuardian
-
-```bash
-git clone https://github.com/arcAman07/TexGuardian.git
-cd TexGuardian
-python -m venv .venv
-source .venv/bin/activate
-pip install -e ".[dev]"
-```
 
 ### Verify installation
 

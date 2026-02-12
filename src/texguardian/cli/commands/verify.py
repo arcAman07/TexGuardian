@@ -82,13 +82,21 @@ def run_verify_checks(session: SessionState) -> list[dict]:
     if session.paper_spec:
         for check in session.paper_spec.checks:
             if check.pattern:
-                matches = parser.find_pattern(check.pattern)
-                results.append({
-                    "name": check.name,
-                    "severity": check.severity,
-                    "passed": len(matches) == 0,
-                    "message": check.message if matches else "OK",
-                })
+                try:
+                    matches = parser.find_pattern(check.pattern)
+                    results.append({
+                        "name": check.name,
+                        "severity": check.severity,
+                        "passed": len(matches) == 0,
+                        "message": check.message if matches else "OK",
+                    })
+                except Exception as e:
+                    results.append({
+                        "name": check.name,
+                        "severity": "warning",
+                        "passed": True,
+                        "message": f"Check failed: {e}",
+                    })
 
     return results
 

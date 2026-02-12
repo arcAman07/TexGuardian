@@ -185,9 +185,9 @@ def _auto_verify_on_startup(session: SessionState, console: Console) -> None:
                     "Ask me to fix specific issues.[/dim]"
                 )
             console.print()
-    except Exception:
+    except Exception as e:
         # Don't let verify errors block the REPL from starting
-        pass
+        console.print(f"[dim]Auto-verify skipped: {e}[/dim]")
 
 
 async def _handle_command(

@@ -34,7 +34,7 @@ Whether you're preparing a NeurIPS submission, fixing figure overflows, anonymiz
 
 ## Highlights
 
-- **Styled REPL** — bordered welcome panel with paper stats, colored `❯` prompt, auto-verify on startup
+- **Styled REPL** — bordered welcome panel with paper stats, colored `❯` prompt
 - **26 slash commands** for every stage of paper preparation
 - **LLM-powered fixes** — figures, tables, citations, sections, anonymization, camera-ready
 - **Instant verification** — regex-based checks run directly on `.tex` files, no compilation needed
@@ -132,7 +132,7 @@ providers:
 texguardian chat
 ```
 
-On startup you'll see a styled welcome panel with paper stats and auto-verification:
+On startup you'll see a styled welcome panel with paper stats:
 
 ```
 ╭──────────────────────────────────────────────────────────╮
@@ -145,17 +145,6 @@ On startup you'll see a styled welcome panel with paper stats and auto-verificat
 │                                                          │
 │  Type /help for commands or ask a question.              │
 ╰──────────────────────────────────────────────────────────╯
-
-┌───────────────────┬──────────┬────────┬──────────────────────────────────────┐
-│ Check             │ Severity │ Status │ Message                              │
-├───────────────────┼──────────┼────────┼──────────────────────────────────────┤
-│ citations         │ error    │ FAIL   │ 15 citations, 4 undefined            │
-│ figure_references │ warning  │ PASS   │ All 4 figures referenced             │
-│ citation_format   │ warning  │ WARN   │ Use \citep{} or \citet{}             │
-│ todo_remaining    │ error    │ FAIL   │ Remove TODO/FIXME markers            │
-│ figure_overflow   │ error    │ FAIL   │ Figure width exceeds column width    │
-│ hline_usage       │ warning  │ WARN   │ Use booktabs instead of \hline       │
-└───────────────────┴──────────┴────────┴──────────────────────────────────────┘
 
 ❯ _
 ```
@@ -441,35 +430,6 @@ The `/polish_visual` command renders your PDF and sends pages to a vision model:
 ```
 
 This catches layout issues that text-only analysis misses: overlapping figures, bad spacing, misaligned columns, orphaned headers.
-
-## Examples
-
-The `examples/` directory contains two complete papers for testing:
-
-```
-examples/
-├── esolang_paper/          # Full research paper (23 pages, 11 figures, 9 tables)
-│   ├── esolang_bench_paper.tex
-│   ├── esolang_bench.bib
-│   ├── paper_spec.md
-│   └── texguardian.yaml
-│
-└── position_paper/         # Position paper (17 pages, 7 figures, 6 tables)
-    ├── position_paper.tex
-    ├── references.bib
-    ├── paper_spec.md
-    └── texguardian.yaml
-```
-
-Try it out:
-
-```bash
-cd examples/esolang_paper
-texguardian chat
-❯ /verify
-❯ /figures fix
-❯ /feedback
-```
 
 ## Development
 

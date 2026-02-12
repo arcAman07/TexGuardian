@@ -15,7 +15,6 @@ from rich.markup import escape
 from rich.panel import Panel
 
 from texguardian.cli.commands.registry import CommandRegistry
-from texguardian.cli.commands.verify import display_verify_results, run_verify_checks
 from texguardian.cli.completers import TexGuardianCompleter
 from texguardian.llm.factory import create_llm_client
 from texguardian.llm.prompts.system import build_chat_system_prompt
@@ -52,9 +51,6 @@ async def run_repl(session: SessionState, console: Console) -> None:
 
     # Print welcome message
     _print_welcome(session, console)
-
-    # Auto-verify on startup — show issues before the user types anything
-    _auto_verify_on_startup(session, console)
 
     # Main REPL loop
     while True:
@@ -167,27 +163,6 @@ def _print_welcome(session: SessionState, console: Console) -> None:
         "\n".join(lines),
         border_style="cyan",
     ))
-
-
-def _auto_verify_on_startup(session: SessionState, console: Console) -> None:
-    """Run verification checks automatically on startup."""
-    try:
-        results = run_verify_checks(session)
-        if results:
-            console.print()
-            display_verify_results(results, console)
-
-            # Show actionable hint if there are issues
-            failures = sum(1 for r in results if not r["passed"])
-            if failures:
-                console.print(
-                    "\n[dim]Run /figures, /tables, or /citations for details. "
-                    "Ask me to fix specific issues.[/dim]"
-                )
-            console.print()
-    except Exception as e:
-        # Don't let verify errors block the REPL from starting
-        console.print(f"[dim]Auto-verify skipped: {e}[/dim]")
 
 
 async def _handle_command(

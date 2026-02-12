@@ -51,6 +51,7 @@ async def run_repl(session: SessionState, console: Console) -> None:
 
     # Print welcome message
     _print_welcome(session, console)
+    console.print()  # Breathing room after welcome panel
 
     # Main REPL loop
     while True:
@@ -67,15 +68,14 @@ async def run_repl(session: SessionState, console: Console) -> None:
             if not user_input:
                 continue
 
-            # Echo user input with styling
+            # Echo slash commands so they're visible in scrollback;
+            # natural language input is already visible at the prompt.
             if user_input.startswith("/"):
                 console.print(f"\n[bold cyan]{escape(user_input)}[/bold cyan]")
-            else:
-                console.print(f"\n[bold]{escape(user_input)}[/bold]")
 
             # Handle special commands
             if user_input.lower() in ("exit", "quit", "/exit", "/quit"):
-                console.print("[dim]Goodbye![/dim]")
+                console.print("\n[dim]Goodbye![/dim]")
                 break
 
             if user_input == "/clear":
@@ -87,6 +87,7 @@ async def run_repl(session: SessionState, console: Console) -> None:
             # Check if it's a slash command
             if user_input.startswith("/"):
                 await _handle_command(user_input, session, registry, console)
+                console.print()  # Post-command spacing
             else:
                 # Send to LLM
                 await _handle_chat(user_input, session, console)
@@ -211,14 +212,17 @@ async def _handle_chat(
     # Get messages for LLM
     messages = session.context.get_messages_for_llm()
 
-    # Stream response with thinking spinner
+    # Left-border prefix for response lines (subtle visual container)
+    border = "  [dim]│[/dim] "
+
+    # Stream response with left-border styling
     console.print()
     full_response: list[str] = []
     first_token = True
 
     max_tokens = session.llm_client.max_output_tokens
 
-    status = console.status("[dim]Thinking...", spinner="dots")
+    status = console.status("[dim]Thinking...[/dim]", spinner="dots")
     status.start()
 
     try:
@@ -232,7 +236,17 @@ async def _handle_chat(
                 if first_token:
                     status.stop()
                     first_token = False
-                console.print(chunk.content, end="", highlight=False)
+                    console.print(border, end="")
+
+                # Stream with left border on each new line
+                lines = chunk.content.split("\n")
+                for i, line in enumerate(lines):
+                    if i > 0:
+                        console.print()
+                        console.print(border, end="")
+                    if line:
+                        console.print(line, end="", highlight=False)
+
                 full_response.append(chunk.content)
 
     except Exception as e:
@@ -243,7 +257,8 @@ async def _handle_chat(
         if first_token:
             status.stop()
 
-    console.print()
+    console.print()  # End last response line
+    console.print()  # Breathing room after response
 
     # Add assistant response to context
     response_text = "".join(full_response)

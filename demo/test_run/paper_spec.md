@@ -1,7 +1,7 @@
 ---
 title: "Scaling Sparse Mixture-of-Experts for Long-Context Document Understanding"
-venue: "NeurIPS 2026"
-deadline: "2026-05-15"
+venue: "ICLR 2026"
+deadline: "2026-01-23"
 thresholds:
   max_pages: 9
   min_references: 20

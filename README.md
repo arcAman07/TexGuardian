@@ -1,8 +1,8 @@
 <p align="center">
   <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="docs/assets/logo-dark.svg">
-    <source media="(prefers-color-scheme: light)" srcset="docs/assets/logo-light.svg">
-    <img alt="TexGuardian" src="docs/assets/logo-light.svg" width="480">
+    <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/arcAman07/TexGuardian/main/docs/assets/logo-dark.svg">
+    <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/arcAman07/TexGuardian/main/docs/assets/logo-light.svg">
+    <img alt="TexGuardian" src="https://raw.githubusercontent.com/arcAman07/TexGuardian/main/docs/assets/logo-light.svg" width="480">
   </picture>
 </p>
 

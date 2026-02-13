@@ -9,6 +9,8 @@ from pathlib import Path
 class LatexParser:
     """Parser for LaTeX documents."""
 
+    _SKIP_DIRS = {'_original', '.texguardian', 'build', 'backup', '.git', '__pycache__'}
+
     def __init__(self, project_root: Path, main_tex: Path | str | None = None):
         self.project_root = project_root
         # If main_tex is specified, use it; otherwise will search for \documentclass
@@ -20,12 +22,30 @@ class LatexParser:
         else:
             self.main_tex = None
 
+    def _iter_tex_files(self) -> list[Path]:
+        """Iterate .tex files, filtering out build/backup dirs."""
+        result = []
+        for f in self.project_root.rglob("*.tex"):
+            rel = str(f.relative_to(self.project_root))
+            if not any(skip in rel for skip in self._SKIP_DIRS):
+                result.append(f)
+        return result
+
+    def _iter_bib_files(self) -> list[Path]:
+        """Iterate .bib files, filtering out build/backup dirs."""
+        result = []
+        for f in self.project_root.rglob("*.bib"):
+            rel = str(f.relative_to(self.project_root))
+            if not any(skip in rel for skip in self._SKIP_DIRS):
+                result.append(f)
+        return result
+
     def extract_citations(self) -> list[str]:
         """Extract all citation keys from .tex files."""
         keys = []
         pattern = r"\\cite[pt]?\{([^}]+)\}"
 
-        for tex_file in self.project_root.rglob("*.tex"):
+        for tex_file in self._iter_tex_files():
             content = tex_file.read_text(errors="ignore")
             matches = re.findall(pattern, content)
             for match in matches:
@@ -39,7 +59,7 @@ class LatexParser:
         citations = []
         pattern = r"\\(cite[pt]?)\{([^}]+)\}"
 
-        for tex_file in self.project_root.rglob("*.tex"):
+        for tex_file in self._iter_tex_files():
             content = tex_file.read_text(errors="ignore")
             rel_path = tex_file.relative_to(self.project_root)
 
@@ -62,7 +82,7 @@ class LatexParser:
         keys = []
         pattern = r"@\w+\{([^,]+),"
 
-        for bib_file in self.project_root.rglob("*.bib"):
+        for bib_file in self._iter_bib_files():
             content = bib_file.read_text(errors="ignore")
             matches = re.findall(pattern, content)
             keys.extend(k.strip() for k in matches)
@@ -75,7 +95,7 @@ class LatexParser:
         # Match \label{fig:...} inside figure environments
         pattern = r"\\label\{(fig:[^}]+)\}"
 
-        for tex_file in self.project_root.rglob("*.tex"):
+        for tex_file in self._iter_tex_files():
             content = tex_file.read_text(errors="ignore")
             matches = re.findall(pattern, content)
             labels.extend(matches)
@@ -85,12 +105,18 @@ class LatexParser:
     def extract_figures_with_details(self) -> list[dict]:
         """Extract figures with details."""
         figures = []
+        seen_labels: set[str] = set()
         # Simple pattern for figure environments
         fig_pattern = r"\\begin\{figure\}.*?\\end\{figure\}"
 
         for tex_file in self.project_root.rglob("*.tex"):
-            content = tex_file.read_text(errors="ignore")
+            # Skip backup files, checkpoints, and build directories
             rel_path = tex_file.relative_to(self.project_root)
+            path_str = str(rel_path)
+            if any(skip in path_str for skip in ['_original', '.texguardian', 'build', 'backup']):
+                continue
+
+            content = tex_file.read_text(errors="ignore")
 
             for match in re.finditer(fig_pattern, content, re.DOTALL):
                 fig_content = match.group(0)
@@ -98,6 +124,12 @@ class LatexParser:
                 # Extract label
                 label_match = re.search(r"\\label\{([^}]+)\}", fig_content)
                 label = label_match.group(1) if label_match else ""
+
+                # Skip duplicate labels
+                if label and label in seen_labels:
+                    continue
+                if label:
+                    seen_labels.add(label)
 
                 # Extract caption
                 caption_match = re.search(r"\\caption\{([^}]+)\}", fig_content)
@@ -112,6 +144,7 @@ class LatexParser:
                     "caption": caption,
                     "file": image_file,
                     "source": str(rel_path),
+                    "content": fig_content[:500],
                 })
 
         return figures
@@ -121,7 +154,7 @@ class LatexParser:
         refs = []
         pattern = r"\\ref\{(fig:[^}]+)\}"
 
-        for tex_file in self.project_root.rglob("*.tex"):
+        for tex_file in self._iter_tex_files():
             content = tex_file.read_text(errors="ignore")
             matches = re.findall(pattern, content)
             refs.extend(matches)
@@ -135,13 +168,8 @@ class LatexParser:
         # Pattern for table environments
         table_pattern = r"\\begin\{table\}.*?\\end\{table\}"
 
-        for tex_file in self.project_root.rglob("*.tex"):
-            # Skip backup files, checkpoints, and build directories
+        for tex_file in self._iter_tex_files():
             rel_path = tex_file.relative_to(self.project_root)
-            path_str = str(rel_path)
-            if any(skip in path_str for skip in ['_original', '.texguardian', 'build', 'backup']):
-                continue
-
             content = tex_file.read_text(errors="ignore")
 
             for match in re.finditer(table_pattern, content, re.DOTALL):
@@ -190,7 +218,7 @@ class LatexParser:
         refs = []
         pattern = r"\\ref\{(tab:[^}]+)\}"
 
-        for tex_file in self.project_root.rglob("*.tex"):
+        for tex_file in self._iter_tex_files():
             content = tex_file.read_text(errors="ignore")
             matches = re.findall(pattern, content)
             refs.extend(matches)
@@ -201,7 +229,7 @@ class LatexParser:
         """Parse bibliography files into a dictionary."""
         entries = {}
 
-        for bib_file in self.project_root.rglob("*.bib"):
+        for bib_file in self._iter_bib_files():
             content = bib_file.read_text(errors="ignore")
 
             # Match @type{key, ...}
@@ -303,7 +331,7 @@ class LatexParser:
         except re.error:
             return matches
 
-        for tex_file in self.project_root.rglob("*.tex"):
+        for tex_file in self._iter_tex_files():
             content = tex_file.read_text(errors="ignore")
             rel_path = tex_file.relative_to(self.project_root)
 

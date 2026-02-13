@@ -186,6 +186,23 @@ class VisualVerifier:
                     stopped_reason="No issues",
                 )
 
+            # Checkpoint before patching so we can revert if compilation breaks
+            checkpoint_files = [self.session.main_tex_path]
+            checkpoint_id = None
+            try:
+                from texguardian.checkpoint.manager import CheckpointManager
+
+                if not self.session.checkpoint_manager:
+                    self.session.checkpoint_manager = CheckpointManager(
+                        self.session.guardian_dir,
+                    )
+                checkpoint_id = await self.session.checkpoint_manager.create(
+                    f"Before visual patches round {round_num}",
+                    checkpoint_files,
+                )
+            except Exception:
+                pass  # checkpointing is best-effort
+
             # Apply patches
             applied = await self._apply_visual_patches(substantive_issues, console)
             patches_applied += applied
@@ -200,6 +217,29 @@ class VisualVerifier:
                     patches_applied=patches_applied,
                     remaining_issues=[i.get("description", "") for i in issues],
                     stopped_reason="No patches applied",
+                )
+
+            # Quick recompile to verify patches didn't break compilation
+            test_result = await compiler.compile(
+                self.session.main_tex_path,
+                self.session.output_dir,
+            )
+            if not test_result.success:
+                if console:
+                    console.print("  [yellow]Patches broke compilation — reverting[/yellow]")
+                # Revert to checkpoint
+                if checkpoint_id and self.session.checkpoint_manager:
+                    try:
+                        await self.session.checkpoint_manager.restore(checkpoint_id)
+                        patches_applied -= applied
+                    except Exception:
+                        pass
+                return VisualVerificationResult(
+                    rounds=round_num,
+                    quality_score=quality_score,
+                    patches_applied=patches_applied,
+                    remaining_issues=[i.get("description", "") for i in issues],
+                    stopped_reason="Patches reverted (compilation failure)",
                 )
 
             # Store for next round

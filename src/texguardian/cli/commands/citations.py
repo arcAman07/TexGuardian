@@ -9,9 +9,18 @@ from rich.table import Table
 from texguardian.cli.commands.registry import Command
 
 if TYPE_CHECKING:
+    from pathlib import Path
+
     from rich.console import Console
 
     from texguardian.core.session import SessionState
+
+
+def _numbered_content(path: Path) -> str:
+    """Return file content with line numbers for accurate LLM patch generation."""
+    content = path.read_text()
+    lines = content.splitlines()
+    return "\n".join(f"{i+1:4d}| {line}" for i, line in enumerate(lines))
 
 
 CITATION_FIX_PROMPT = """\
@@ -28,17 +37,19 @@ Bibliography: `{bib_filename}`
 ## Validation Results (from CrossRef/Semantic Scholar API)
 {validation_results}
 
-## Current Bibliography Content
-{bib_content}
+## Bibliography File Content (with line numbers)
+{numbered_bib_content}
 
-## Paper Content (relevant sections)
-{paper_content}
+## Paper File Content (with line numbers)
+{numbered_paper_content}
 
 ## Task
 For each issue, provide a unified diff patch that fixes it. Use the REAL \
 paper information from validation results.
 
 IMPORTANT:
+- Use the exact line numbers from the numbered content above in your @@ headers
+- Context and removed lines MUST match the file content exactly (copy them)
 - For hallucinated citations: Replace with the correct paper from search \
 results, or remove if no match
 - For papers with wrong metadata: Update title, author, year, DOI to \
@@ -71,11 +82,11 @@ Bibliography: `{bib_filename}`
 ## User Request
 {user_instruction}
 
-## Current Bibliography Content
-{bib_content}
+## Bibliography File Content (with line numbers)
+{numbered_bib_content}
 
-## Paper Content (citation-relevant sections)
-{paper_content}
+## Paper File Content (with line numbers)
+{numbered_paper_content}
 
 ## Task
 Generate unified diff patches to implement the user's request above.
@@ -86,6 +97,9 @@ Guidelines:
 - Use proper BibTeX formatting
 - If converting \\cite to \\citep/\\citet, use \\citep for parenthetical
   and \\citet when the author name is part of the sentence
+
+IMPORTANT: Use the exact line numbers from the numbered content above in \
+your @@ headers. Context and removed lines MUST match the file content exactly.
 
 Output ONLY unified diff patches inside ```diff code blocks. Each patch \
 must use the exact filename in the --- and +++ headers. Example format:
@@ -262,17 +276,17 @@ class CitationsCommand(Command):
             console.print("[red]LLM client not available[/red]")
             return
 
-        # Get bib content
-        bib_content = ""
+        # Get bib content with line numbers
         bib_filename = ""
+        numbered_bib = "(No .bib file found)"
         bib_files = list(session.project_root.glob("**/*.bib"))
         if bib_files:
-            bib_content = bib_files[0].read_text()[:8000]
             bib_filename = bib_files[0].name
+            numbered_bib = _numbered_content(bib_files[0])
 
-        # Get paper content (citation-relevant parts)
-        main_tex = session.main_tex_path.read_text()[:10000]
+        # Get paper content with line numbers
         filename = session.main_tex_path.name
+        numbered_paper = _numbered_content(session.main_tex_path)
 
         # Build validation context if available
         validation_context = ""
@@ -294,8 +308,8 @@ class CitationsCommand(Command):
             filename=filename,
             bib_filename=bib_filename or "references.bib",
             user_instruction=user_instruction,
-            bib_content=bib_content,
-            paper_content=main_tex,
+            numbered_bib_content=numbered_bib,
+            numbered_paper_content=numbered_paper,
         ) + validation_context
 
         console.print("[cyan]Generating edits...[/cyan]\n")
@@ -478,25 +492,25 @@ class CitationsCommand(Command):
                         validation_text.append(f"      DOI: {sr.get('doi', '')}")
                         validation_text.append(f"      Source: {sr.get('source', '')}")
 
-        # Get bib content
-        bib_content = ""
+        # Get bib content with line numbers
         bib_filename = ""
+        numbered_bib = "(No .bib file found)"
         bib_files = list(session.project_root.glob("**/*.bib"))
         if bib_files:
-            bib_content = bib_files[0].read_text()[:8000]
             bib_filename = bib_files[0].name
+            numbered_bib = _numbered_content(bib_files[0])
 
-        # Get relevant paper content
-        main_tex = session.main_tex_path.read_text()[:10000]
+        # Get paper content with line numbers
         filename = session.main_tex_path.name
+        numbered_paper = _numbered_content(session.main_tex_path)
 
         prompt = CITATION_FIX_PROMPT.format(
             filename=filename,
             bib_filename=bib_filename or "references.bib",
             issues="\n".join(issues_text),
             validation_results="\n".join(validation_text) if validation_text else "No validation issues",
-            bib_content=bib_content,
-            paper_content=main_tex,
+            numbered_bib_content=numbered_bib,
+            numbered_paper_content=numbered_paper,
         )
 
         from texguardian.llm.streaming import stream_llm

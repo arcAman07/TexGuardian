@@ -17,9 +17,18 @@ from rich.table import Table
 from texguardian.cli.commands.registry import Command
 
 if TYPE_CHECKING:
+    from pathlib import Path
+
     from rich.console import Console
 
     from texguardian.core.session import SessionState
+
+
+def _numbered_content(path: Path) -> str:
+    """Return file content with line numbers for accurate LLM patch generation."""
+    content = path.read_text()
+    lines = content.splitlines()
+    return "\n".join(f"{i+1:4d}| {line}" for i, line in enumerate(lines))
 
 
 # ---------------------------------------------------------------------------
@@ -100,10 +109,8 @@ You are a LaTeX expert helping anonymize a paper for double-blind review.
 ## Current Paper Analysis
 {analysis}
 
-## Paper Content (targeted sections)
-```latex
-{targeted_content}
-```
+## Full File Content (with line numbers)
+{numbered_content}
 
 ## Task
 Generate unified diff patches to anonymize this paper:
@@ -121,6 +128,8 @@ work [1]...") with a `% SELF-CITE:` comment
 7. **Email addresses**: Comment out or replace with anonymous placeholder
 
 IMPORTANT:
+- Use the exact line numbers from the numbered content above in your @@ headers
+- Context and removed lines MUST match the file content exactly (copy them)
 - Do NOT delete content, just comment it out with % (so it can be restored \
 for camera-ready)
 - Use % to comment out lines in LaTeX
@@ -385,10 +394,9 @@ class AnonymizeCommand(Command):
                 "- Replace author names with \\author{Anonymous}"
             )
 
-        # Build targeted content
-        targeted = self._build_targeted_content(content, full_content)
-
         filename = session.main_tex_path.name
+        numbered = _numbered_content(session.main_tex_path)
+
         prompt = ANONYMIZE_PROMPT.format(
             filename=filename,
             analysis=("\n".join(analysis_text)
@@ -396,7 +404,7 @@ class AnonymizeCommand(Command):
                       else "No specific issues found"),
             venue=venue.upper() if venue else "Unknown",
             venue_instructions=venue_instructions,
-            targeted_content=targeted,
+            numbered_content=numbered,
         )
 
         from texguardian.llm.streaming import stream_llm

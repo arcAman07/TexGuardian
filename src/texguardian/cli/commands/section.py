@@ -16,9 +16,18 @@ from rich.table import Table
 from texguardian.cli.commands.registry import Command
 
 if TYPE_CHECKING:
+    from pathlib import Path
+
     from rich.console import Console
 
     from texguardian.core.session import SessionState
+
+
+def _numbered_content(path: Path) -> str:
+    """Return file content with line numbers for accurate LLM patch generation."""
+    content = path.read_text()
+    lines = content.splitlines()
+    return "\n".join(f"{i+1:4d}| {line}" for i, line in enumerate(lines))
 
 
 SECTION_FIX_PROMPT = """\
@@ -33,11 +42,11 @@ You are a LaTeX expert improving a section in an academic paper.
 ## Issues Found
 {issues}
 
-## Current Section Content
-{section_content}
+## Full File Content (with line numbers)
+{numbered_content}
 
 ## Task
-Generate unified diff patches to fix these issues:
+Generate unified diff patches to fix issues in the **{section_name}** section:
 
 1. **Writing clarity**: Improve unclear sentences
 2. **Structure**: Better paragraph organization
@@ -50,6 +59,9 @@ Guidelines:
 - Don't add new content, just improve existing
 - Make minimal changes for maximum impact
 - Preserve author's voice and style
+
+IMPORTANT: Use the exact line numbers from the numbered content above in \
+your @@ headers. Context and removed lines MUST match the file content exactly.
 
 Output ONLY unified diff patches inside ```diff code blocks. Each patch \
 must use the exact filename `{filename}` in the --- and +++ headers. \
@@ -77,17 +89,21 @@ You are a LaTeX expert editing a section in an academic paper.
 ## User Request
 {user_instruction}
 
-## Current Section Content
-{section_content}
+## Full File Content (with line numbers)
+{numbered_content}
 
 ## Task
-Generate unified diff patches to implement the user's request above.
+Generate unified diff patches to implement the user's request on the \
+**{section_name}** section.
 
 Guidelines:
 - Make only the changes the user requested
 - Preserve the author's voice and style
 - Keep the overall structure unless the user asks for restructuring
 - Make minimal, focused changes
+
+IMPORTANT: Use the exact line numbers from the numbered content above in \
+your @@ headers. Context and removed lines MUST match the file content exactly.
 
 Output ONLY unified diff patches inside ```diff code blocks. Each patch \
 must use the exact filename `{filename}` in the --- and +++ headers. \
@@ -419,13 +435,14 @@ class SectionCommand(Command):
 
         issues_text = "\n".join([f"- {i['type']}: {i['desc']}" for i in issues])
         filename = session.main_tex_path.name
+        numbered = _numbered_content(session.main_tex_path)
 
         prompt = SECTION_FIX_PROMPT.format(
             filename=filename,
             section_name=section_name,
             venue=session.paper_spec.venue if session.paper_spec else "Unknown",
             issues=issues_text,
-            section_content=section_content,
+            numbered_content=numbered,
         )
 
         console.print("[cyan]Generating fixes...[/cyan]\n")
@@ -476,13 +493,14 @@ class SectionCommand(Command):
             return
 
         filename = session.main_tex_path.name
+        numbered = _numbered_content(session.main_tex_path)
 
         prompt = SECTION_CUSTOM_PROMPT.format(
             filename=filename,
             section_name=section_name,
             venue=session.paper_spec.venue if session.paper_spec else "Unknown",
             user_instruction=user_instruction,
-            section_content=section_content,
+            numbered_content=numbered,
         )
 
         console.print("[cyan]Generating edits...[/cyan]\n")

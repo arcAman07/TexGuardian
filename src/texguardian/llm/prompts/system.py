@@ -29,30 +29,21 @@ You help researchers write, edit, and polish their papers for publication.
 ## Paper Rules (from paper_spec.md)
 {paper_spec_rules}
 
+## Current File Content
+{file_content_section}
+
 ## CRITICAL: Patch-Only Edits
 ALL file modifications MUST be provided as unified diff patches inside \
 ```diff code blocks. Never provide raw replacement text.
 
 IMPORTANT: Always use the exact filename (e.g., `{main_tex_filename}`) \
-in the --- and +++ headers. Do NOT use generic names like `main.tex`.
-
-Example format:
-```diff
---- a/{main_tex_filename}
-+++ b/{main_tex_filename}
-@@ -23,7 +23,8 @@
- context line before
- more context
--line to be removed or changed
-+new line replacing the old one
-+additional new line if needed
- context line after
- more context after
-```
+in the --- and +++ headers. Do NOT use generic names like `main.tex`. \
+Use the EXACT line numbers from the file content above in your @@ headers. \
+Context and removed lines MUST match the file content exactly (copy them).
 
 Rules for patches:
-1. Include 3 lines of context before and after changes
-2. Use correct line numbers in @@ headers
+1. Include 2-3 lines of context before and after changes
+2. Use correct line numbers from the numbered content above in @@ headers
 3. Prefix removed lines with `-`
 4. Prefix added lines with `+`
 5. Prefix unchanged context lines with space
@@ -86,6 +77,10 @@ def build_chat_system_prompt(session: SessionState) -> str:
 
     main_tex_filename = session.main_tex_path.name if session.main_tex_path else "main.tex"
 
+    # Include the main .tex file content with line numbers so the LLM
+    # can generate accurate patches with correct line numbers and context.
+    file_content_section = _format_file_content(session)
+
     parts.append(CHAT_SYSTEM_PROMPT.format(
         paper_title=paper_spec.title if paper_spec else "Untitled",
         venue=paper_spec.venue if paper_spec else "Unknown",
@@ -93,6 +88,7 @@ def build_chat_system_prompt(session: SessionState) -> str:
         main_tex_filename=main_tex_filename,
         project_files=_format_project_files(session),
         paper_spec_rules=_format_paper_spec_rules(paper_spec),
+        file_content_section=file_content_section,
         max_changed_lines=session.config.safety.max_changed_lines,
         allowlist_patterns=", ".join(session.config.safety.allowlist),
         denylist_patterns=", ".join(session.config.safety.denylist),
@@ -107,6 +103,22 @@ def build_chat_system_prompt(session: SessionState) -> str:
             parts.append(f"## Previous Conversation Summary\n{summary}")
 
     return "\n".join(parts)
+
+
+def _format_file_content(session: SessionState) -> str:
+    """Include the main .tex file with line numbers for accurate patching."""
+    try:
+        if session.main_tex_path and session.main_tex_path.exists():
+            content = session.main_tex_path.read_text()
+            lines = content.splitlines()
+            numbered = "\n".join(f"{i+1:4d}| {line}" for i, line in enumerate(lines))
+            return (
+                f"Below is `{session.main_tex_path.name}` with line numbers. "
+                f"Use these exact line numbers in your @@ headers.\n\n{numbered}"
+            )
+    except Exception:
+        pass
+    return "(File content not available — read the file with /read first)"
 
 
 def _format_project_files(session: SessionState) -> str:

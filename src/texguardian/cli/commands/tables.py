@@ -15,6 +15,12 @@ from rich.table import Table
 
 from texguardian.cli.commands.registry import Command
 
+
+def _numbered_content(content: str) -> str:
+    """Return file content with line numbers for accurate LLM patch generation."""
+    lines = content.splitlines()
+    return "\n".join(f"{i+1:4d}| {line}" for i, line in enumerate(lines))
+
 if TYPE_CHECKING:
     from rich.console import Console
 
@@ -30,8 +36,8 @@ You are a LaTeX expert fixing table issues in an academic paper.
 ## Table Issues Found
 {issues}
 
-## Current Table Code
-{table_code}
+## Full File Content (with line numbers)
+{numbered_content}
 
 ## Task
 Generate unified diff patches to fix these issues:
@@ -39,7 +45,7 @@ Generate unified diff patches to fix these issues:
 1. **Missing labels**: Add \\label{{tab:descriptive-name}} after \\caption
 2. **Missing captions**: Add descriptive caption
 3. **Unreferenced tables**: Add \\ref{{tab:name}} in text
-4. **Formatting**: Use booktabs (\\toprule, \\midrule, \\bottomrule)
+4. **Formatting**: Use booktabs (\\toprule, \\midrule, \\bottomrule) instead of \\hline
 5. **Alignment**: Fix column alignment, number formatting
 6. **Units**: Add units to column headers if missing
 
@@ -48,19 +54,10 @@ For captions:
 - Make self-contained and descriptive
 - Include what the table shows and key takeaways
 
+IMPORTANT: Use the EXACT line numbers shown above in your @@ headers. \
+Context and removed lines MUST match the file content exactly (copy them). \
 Output ONLY unified diff patches inside ```diff code blocks. Each patch \
-must use the exact filename `{filename}` in the --- and +++ headers. \
-Example format:
-
-```diff
---- a/{filename}
-+++ b/{filename}
-@@ -150,3 +150,4 @@
- \\begin{{table}}[t]
-+\\caption{{Results comparison across methods.}}
-+\\label{{tab:results}}
- \\centering
-```
+must use the exact filename `{filename}` in the --- and +++ headers.
 """
 
 
@@ -73,8 +70,8 @@ You are a LaTeX expert editing tables in an academic paper.
 ## User Request
 {user_instruction}
 
-## Current Table Code (all tables in the paper)
-{table_code}
+## Full File Content (with line numbers)
+{numbered_content}
 
 ## Task
 Generate unified diff patches to implement the user's request above.
@@ -86,17 +83,10 @@ Guidelines:
 - Place captions ABOVE tables (standard academic convention)
 - Keep number formatting consistent within columns
 
+IMPORTANT: Use the EXACT line numbers shown above in your @@ headers. \
+Context and removed lines MUST match the file content exactly (copy them). \
 Output ONLY unified diff patches inside ```diff code blocks. Each patch \
-must use the exact filename `{filename}` in the --- and +++ headers. \
-Example format:
-
-```diff
---- a/{filename}
-+++ b/{filename}
-@@ -150,3 +150,3 @@
--\\begin{{tabular}}{{l|c|c}}
-+\\begin{{tabular}}{{lcc}}
-```
+must use the exact filename `{filename}` in the --- and +++ headers.
 """
 
 
@@ -338,17 +328,15 @@ class TablesCommand(Command):
         for issue in issues:
             issues_text.append(f"- {issue['type']}: {issue['table']} ({issue['severity']})")
 
-        # Get table code
+        # Get full file content with line numbers
         content = session.main_tex_path.read_text()
-        table_pattern = r'\\begin\{table\}.*?\\end\{table\}'
-        tables = re.findall(table_pattern, content, re.DOTALL)
-        table_code = "\n\n".join(tables[:10])
+        numbered_content = _numbered_content(content)
 
         filename = session.main_tex_path.name
         prompt = TABLE_FIX_PROMPT.format(
             filename=filename,
             issues="\n".join(issues_text),
-            table_code=table_code,
+            numbered_content=numbered_content,
         )
 
         console.print("[cyan]Generating fixes...[/cyan]\n")
@@ -428,19 +416,17 @@ class TablesCommand(Command):
             return
 
         content = session.main_tex_path.read_text()
-        table_pattern = r'\\begin\{table\}.*?\\end\{table\}'
-        tables = re.findall(table_pattern, content, re.DOTALL)
-        table_code = "\n\n".join(tables[:10])
-
-        if not table_code:
+        if not re.search(r'\\begin\{table\}', content):
             console.print("[yellow]No table code found[/yellow]")
             return
+
+        numbered_content = _numbered_content(content)
 
         filename = session.main_tex_path.name
         prompt = TABLE_CUSTOM_PROMPT.format(
             filename=filename,
             user_instruction=user_instruction,
-            table_code=table_code,
+            numbered_content=numbered_content,
         )
 
         console.print("[cyan]Generating edits...[/cyan]\n")
@@ -629,14 +615,13 @@ async def generate_and_apply_table_fixes(
     # Build prompt
     issues_text = [f"- {i['type']}: {i['table']} ({i['severity']})" for i in issues]
 
-    table_pattern = r'\\begin\{table\}.*?\\end\{table\}'
-    table_code = "\n\n".join(re.findall(table_pattern, content, re.DOTALL)[:10])
+    numbered_content = _numbered_content(content)
 
     filename = session.main_tex_path.name
     prompt = TABLE_FIX_PROMPT.format(
         filename=filename,
         issues="\n".join(issues_text),
-        table_code=table_code,
+        numbered_content=numbered_content,
     )
 
     console.print("  [cyan]Generating table fixes...[/cyan]")

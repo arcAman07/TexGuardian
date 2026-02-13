@@ -24,6 +24,13 @@ if TYPE_CHECKING:
     from texguardian.core.session import SessionState
 
 
+def _numbered_content(path: Path) -> str:
+    """Return file content with line numbers for accurate LLM patch generation."""
+    content = path.read_text()
+    lines = content.splitlines()
+    return "\n".join(f"{i+1:4d}| {line}" for i, line in enumerate(lines))
+
+
 # ---------------------------------------------------------------------------
 # Data classes
 # ---------------------------------------------------------------------------
@@ -185,10 +192,8 @@ You are a LaTeX expert preparing a paper for camera-ready submission to {venue}.
 ## Current State
 {analysis_summary}
 
-## Paper Content (targeted sections)
-```latex
-{targeted_content}
-```
+## Full File Content (with line numbers)
+{numbered_content}
 
 ## Task
 Generate unified diff patches to convert this paper to camera-ready format.
@@ -204,6 +209,9 @@ content the authors haven't written
 
 Do NOT modify author names or affiliations — the user handles \
 de-anonymization separately.
+
+IMPORTANT: Use the exact line numbers from the numbered content above in \
+your @@ headers. Context and removed lines MUST match the file content exactly.
 
 Output ONLY unified diff patches inside ```diff code blocks. Each patch \
 must use the exact filename `{filename}` in the --- and +++ headers. \
@@ -699,13 +707,9 @@ class CameraReadyCommand(Command):
         if analysis.venue:
             checklist_items.extend(analysis.venue.checklist)
 
-        # Build targeted content
-        targeted_content = self._build_targeted_content(
-            content, full_content, analysis,
-        )
-
         venue_display = analysis.venue.display_name if analysis.venue else "Unknown venue"
         filename = session.main_tex_path.name
+        numbered = _numbered_content(session.main_tex_path)
         if analysis.venue:
             camera_ready_opt = analysis.venue.camera_ready_option
         else:
@@ -717,7 +721,7 @@ class CameraReadyCommand(Command):
             camera_ready_option=camera_ready_opt,
             checklist="\n".join(f"- {item}" for item in checklist_items) if checklist_items else "Standard camera-ready requirements",
             analysis_summary="\n".join(analysis_summary_parts),
-            targeted_content=targeted_content,
+            numbered_content=numbered,
         )
 
         # Stream the LLM response

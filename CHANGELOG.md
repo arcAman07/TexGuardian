@@ -5,6 +5,12 @@ All notable changes to TexGuardian will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.4] - 2025-02-13
+
+### Fixed
+
+- **All LLM prompts now include full file content with line numbers** — every patch-generating command (`/section`, `/citations`, `/camera_ready`, `/anonymize`, `/figures`, `/tables`, and chat) sends the complete file with `{line_number}| {content}` formatting so the LLM generates accurate `@@ -X,Y @@` headers. Previously, prompts sent extracted snippets without line numbers, forcing the LLM to guess line positions which caused patch application failures.
+
 ## [0.2.3] - 2025-02-13
 
 ### Fixed

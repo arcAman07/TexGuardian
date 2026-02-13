@@ -18,6 +18,12 @@ from rich.table import Table
 
 from texguardian.cli.commands.registry import Command
 
+
+def _numbered_content(content: str) -> str:
+    """Return file content with line numbers for accurate LLM patch generation."""
+    lines = content.splitlines()
+    return "\n".join(f"{i+1:4d}| {line}" for i, line in enumerate(lines))
+
 if TYPE_CHECKING:
     from rich.console import Console
 
@@ -33,8 +39,8 @@ You are a LaTeX expert fixing figure issues in an academic paper.
 ## Figure Issues Found
 {issues}
 
-## Current Figure Code
-{figure_code}
+## Full File Content (with line numbers)
+{numbered_content}
 
 ## Task
 Generate unified diff patches to fix these issues:
@@ -54,19 +60,10 @@ For captions, follow these guidelines:
 - Mention key takeaways if it's a results figure
 - Keep under 2-3 sentences unless complex
 
+IMPORTANT: Use the EXACT line numbers shown above in your @@ headers. \
+Context and removed lines MUST match the file content exactly (copy them). \
 Output ONLY unified diff patches inside ```diff code blocks. Each patch \
-must use the exact filename `{filename}` in the --- and +++ headers. \
-Example format:
-
-```diff
---- a/{filename}
-+++ b/{filename}
-@@ -100,3 +100,4 @@
- \\begin{{figure}}[t]
- \\centering
-+\\caption{{Description of the figure.}}
-+\\label{{fig:example}}
-```
+must use the exact filename `{filename}` in the --- and +++ headers.
 """
 
 
@@ -79,8 +76,8 @@ You are a LaTeX expert editing figures in an academic paper.
 ## User Request
 {user_instruction}
 
-## Current Figure Code (all figures in the paper)
-{figure_code}
+## Full File Content (with line numbers)
+{numbered_content}
 
 ## Task
 Generate unified diff patches to implement the user's request above.
@@ -91,17 +88,10 @@ Guidelines:
 - Keep captions self-contained and informative
 - Use proper LaTeX figure formatting
 
+IMPORTANT: Use the EXACT line numbers shown above in your @@ headers. \
+Context and removed lines MUST match the file content exactly (copy them). \
 Output ONLY unified diff patches inside ```diff code blocks. Each patch \
-must use the exact filename `{filename}` in the --- and +++ headers. \
-Example format:
-
-```diff
---- a/{filename}
-+++ b/{filename}
-@@ -100,3 +100,3 @@
--\\includegraphics[width=0.8\\columnwidth]{{fig.pdf}}
-+\\includegraphics[width=\\columnwidth]{{fig.pdf}}
-```
+must use the exact filename `{filename}` in the --- and +++ headers.
 """
 
 
@@ -362,17 +352,15 @@ class FiguresCommand(Command):
         for issue in issues:
             issues_text.append(f"- {issue['type']}: {issue['figure']} ({issue['severity']})")
 
-        # Get figure code
+        # Get full file content with line numbers
         content = session.main_tex_path.read_text()
-        figure_pattern = r'\\begin\{figure\}.*?\\end\{figure\}'
-        figures = re.findall(figure_pattern, content, re.DOTALL)
-        figure_code = "\n\n".join(figures[:10])  # First 10 figures
+        numbered_content = _numbered_content(content)
 
         filename = session.main_tex_path.name
         prompt = FIGURE_FIX_PROMPT.format(
             filename=filename,
             issues="\n".join(issues_text),
-            figure_code=figure_code,
+            numbered_content=numbered_content,
         )
 
         console.print("[cyan]Generating fixes...[/cyan]\n")
@@ -420,21 +408,19 @@ class FiguresCommand(Command):
             console.print("[red]LLM client not available[/red]")
             return
 
-        # Get all figure code from main tex
+        # Get full file content with line numbers
         content = session.main_tex_path.read_text()
-        figure_pattern = r'\\begin\{figure\}.*?\\end\{figure\}'
-        figures = re.findall(figure_pattern, content, re.DOTALL)
-        figure_code = "\n\n".join(figures[:10])
-
-        if not figure_code:
+        if not re.search(r'\\begin\{figure\}', content):
             console.print("[yellow]No figure code found[/yellow]")
             return
+
+        numbered_content = _numbered_content(content)
 
         filename = session.main_tex_path.name
         prompt = FIGURE_CUSTOM_PROMPT.format(
             filename=filename,
             user_instruction=user_instruction,
-            figure_code=figure_code,
+            numbered_content=numbered_content,
         )
 
         console.print("[cyan]Generating edits...[/cyan]\n")
@@ -671,14 +657,13 @@ async def generate_and_apply_figure_fixes(
     issues_text = [f"- {i['type']}: {i['figure']} ({i['severity']})" for i in issues]
 
     content = session.main_tex_path.read_text()
-    figure_pattern = r'\\begin\{figure\}.*?\\end\{figure\}'
-    figure_code = "\n\n".join(re.findall(figure_pattern, content, re.DOTALL)[:10])
+    numbered_content = _numbered_content(content)
 
     filename = session.main_tex_path.name
     prompt = FIGURE_FIX_PROMPT.format(
         filename=filename,
         issues="\n".join(issues_text),
-        figure_code=figure_code,
+        numbered_content=numbered_content,
     )
 
     console.print("  [cyan]Generating figure fixes...[/cyan]")

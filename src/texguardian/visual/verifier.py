@@ -184,6 +184,18 @@ class VisualVerifier:
             applied = await self._apply_visual_patches(substantive_issues, console)
             patches_applied += applied
 
+            # Stop if no patches were applied — no progress being made
+            if applied == 0:
+                if console:
+                    console.print("  [yellow]No patches applied, stopping[/yellow]")
+                return VisualVerificationResult(
+                    rounds=round_num,
+                    quality_score=quality_score,
+                    patches_applied=patches_applied,
+                    remaining_issues=[i.get("description", "") for i in issues],
+                    stopped_reason="No patches applied",
+                )
+
             # Store for next round
             previous_images = current_images
             previous_issues = [i.get("description", "") for i in issues]
@@ -290,9 +302,10 @@ class VisualVerifier:
         console: Console | None,
     ) -> int:
         """Apply patches from visual issues."""
-        from texguardian.cli.commands.approve import apply_patches
+        from texguardian.patch.applier import PatchApplier
         from texguardian.patch.parser import extract_patches
 
+        applier = PatchApplier(self.session.project_root)
         applied = 0
 
         for issue in issues:
@@ -306,12 +319,18 @@ class VisualVerifier:
 
             patches = extract_patches(patch_text)
 
-            if patches:
+            for patch in patches:
                 try:
-                    await apply_patches(patches, self.session, console)
-                    applied += len(patches)
+                    success = applier.apply(patch)
+                    if success:
+                        applied += 1
+                        if console:
+                            console.print(f"  [green]✓[/green] Applied patch to {patch.file_path}")
+                    else:
+                        if console:
+                            console.print(f"  [red]✗[/red] Patch failed for {patch.file_path}")
                 except Exception as e:
                     if console:
-                        console.print(f"  [red]Failed to apply patch: {e}[/red]")
+                        console.print(f"  [red]✗[/red] Error: {e}")
 
         return applied

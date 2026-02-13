@@ -224,8 +224,7 @@ async def _apply_single_patch(
     # Validate
     result = validator.validate(patch, target_path)
     if not result.valid:
-        if verbose:
-            console.print(f"[red]Validation failed: {result.reason}[/red]")
+        console.print(f"[red]Validation failed: {result.reason}[/red]")
         return False
 
     # Create checkpoint
@@ -239,8 +238,13 @@ async def _apply_single_patch(
 
     # Apply patch
     try:
-        return applier.apply(patch)
+        success = applier.apply(patch)
+        if not success:
+            console.print(
+                f"[red]Patch failed: context not found in"
+                f" {escape(str(patch.file_path))}[/red]"
+            )
+        return success
     except Exception as e:
-        if verbose:
-            console.print(f"[red]Error: {e}[/red]")
+        console.print(f"[red]Error applying patch: {e}[/red]")
         return False

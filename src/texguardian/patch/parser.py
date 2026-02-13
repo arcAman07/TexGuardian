@@ -137,4 +137,22 @@ def parse_patch(diff_text: str) -> Patch | None:
     if current_hunk:
         patch.hunks.append(current_hunk)
 
+    # Recalculate old_count / new_count from actual hunk lines.
+    # LLMs frequently get the @@ header counts wrong.
+    for hunk in patch.hunks:
+        actual_old = 0  # context + removed
+        actual_new = 0  # context + added
+        for hl in hunk.lines:
+            if hl.startswith(" "):
+                actual_old += 1
+                actual_new += 1
+            elif hl.startswith("-"):
+                actual_old += 1
+            elif hl.startswith("+"):
+                actual_new += 1
+        if actual_old > 0:
+            hunk.old_count = actual_old
+        if actual_new > 0:
+            hunk.new_count = actual_new
+
     return patch if patch.hunks else None

@@ -5,6 +5,16 @@ All notable changes to TexGuardian will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.3] - 2025-02-13
+
+### Fixed
+
+- **Patch applier rewritten** — multi-strategy hunk positioning: (1) exact position, (2) nearby ±30 lines, (3) full-file content search for removed lines. Uses actual line counts from hunk content instead of trusting LLM-generated `@@ -X,Y @@` headers which are frequently wrong.
+- **Parser recalculates line counts** — `old_count`/`new_count` recomputed from actual hunk lines after parsing, overriding unreliable header values
+- **Visual loop no-progress detection** — stops immediately when 0 patches are applied in a round instead of looping endlessly until max rounds
+- **Visual patch tracking** — `_apply_visual_patches()` now checks actual success/failure per patch instead of counting all patches as applied
+- **Error messages always shown** — validation failures and patch errors are now visible even in auto-approve mode (`/review full`), not silently swallowed
+
 ## [0.2.2] - 2025-02-13
 
 ### Changed

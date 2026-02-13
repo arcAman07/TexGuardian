@@ -73,6 +73,7 @@ VISUAL_VERIFIER_USER_PROMPT = """
 Please analyze the following PDF page image(s) for visual quality issues.
 
 Paper: {paper_title}
+Main LaTeX file: `{main_tex_filename}`
 Venue: {venue} (page limit: {max_pages})
 Pages being analyzed: {page_numbers}
 
@@ -82,11 +83,14 @@ Focus particularly on:
 Previous round issues (if any):
 {previous_issues}
 
-## LaTeX Source (with line numbers)
+## LaTeX Source of `{main_tex_filename}` (with line numbers)
 The line numbers below (e.g. "   5| \\begin{{document}}") are for reference only.
 {numbered_content}
 
 IMPORTANT patch rules:
+- Use EXACTLY `{main_tex_filename}` as the filename in --- and +++ headers.
+  Example: `--- a/{main_tex_filename}` and `+++ b/{main_tex_filename}`.
+  Do NOT use generic names like "paper.tex" or "main.tex".
 - Use the line numbers from above in @@ hunk headers (e.g. @@ -5,3 +5,3 @@).
 - Context and removed lines in the patch must contain the RAW file content only —
   do NOT include the "   5| " line-number prefix. Copy the text after the "| " separator.
@@ -104,6 +108,7 @@ def build_visual_user_prompt(
     focus_areas: list[str] | None = None,
     previous_issues: list[str] | None = None,
     numbered_content: str = "",
+    main_tex_filename: str = "main.tex",
 ) -> str:
     """Build the user prompt for visual verification."""
     return VISUAL_VERIFIER_USER_PROMPT.format(
@@ -114,4 +119,5 @@ def build_visual_user_prompt(
         focus_areas="\n".join(f"- {a}" for a in (focus_areas or ["All categories"])),
         previous_issues="\n".join(f"- {i}" for i in (previous_issues or ["None"])),
         numbered_content=numbered_content or "(Source not available)",
+        main_tex_filename=main_tex_filename,
     )

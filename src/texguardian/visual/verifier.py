@@ -122,14 +122,20 @@ class VisualVerifier:
                         console.print(f"  Visual diff: {diff_percentage:.1f}%")
 
                     if diff_percentage < self.session.config.visual.diff_threshold:
+                        # Only converge if quality is already acceptable.
+                        # A 0% diff with poor quality means patches failed
+                        # to apply last round, not that the paper looks good.
+                        if quality_score >= 85:
+                            if console:
+                                console.print("  [green]Converged![/green]")
+                            return VisualVerificationResult(
+                                rounds=round_num,
+                                quality_score=quality_score,
+                                patches_applied=patches_applied,
+                                stopped_reason="Converged",
+                            )
                         if console:
-                            console.print("  [green]Converged![/green]")
-                        return VisualVerificationResult(
-                            rounds=round_num,
-                            quality_score=quality_score,
-                            patches_applied=patches_applied,
-                            stopped_reason="Converged",
-                        )
+                            console.print("  [yellow]Low diff but quality still below 85 — continuing[/yellow]")
                 else:
                     if console:
                         console.print(f"  [yellow]Page count changed ({len(previous_images)} → {len(current_images)}), skipping diff[/yellow]")
@@ -273,6 +279,7 @@ class VisualVerifier:
 
         # Build prompt
         paper_spec = self.session.paper_spec
+        main_tex_filename = self.session.config.project.main_tex
         user_prompt = build_visual_user_prompt(
             paper_title=paper_spec.title if paper_spec else "Paper",
             venue=paper_spec.venue if paper_spec else "Unknown",
@@ -281,6 +288,7 @@ class VisualVerifier:
             focus_areas=focus_areas,
             previous_issues=previous_issues,
             numbered_content=numbered_content,
+            main_tex_filename=main_tex_filename,
         )
 
         # Send to vision model
@@ -318,12 +326,17 @@ class VisualVerifier:
         from texguardian.patch.parser import extract_patches
 
         applier = PatchApplier(self.session.project_root)
+        main_tex_name = self.session.config.project.main_tex
         applied = 0
 
         for issue in issues:
             patch_text = issue.get("patch")
             if not patch_text:
                 continue
+
+            # Handle escaped newlines from JSON (LLM may use literal \n)
+            if "\\n" in patch_text and "\n" not in patch_text:
+                patch_text = patch_text.replace("\\n", "\n")
 
             # Wrap in diff block for parser
             if not patch_text.startswith("```"):
@@ -332,6 +345,11 @@ class VisualVerifier:
             patches = extract_patches(patch_text)
 
             for patch in patches:
+                # Correct filename if the LLM used a generic name
+                target = self.session.project_root / patch.file_path
+                if not target.exists() and patch.file_path.endswith(".tex"):
+                    patch.file_path = main_tex_name
+
                 try:
                     success = applier.apply(patch)
                     if success:

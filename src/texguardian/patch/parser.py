@@ -137,6 +137,10 @@ def parse_patch(diff_text: str) -> Patch | None:
     if current_hunk:
         patch.hunks.append(current_hunk)
 
+    # Strip line-number prefixes that LLMs sometimes copy from numbered
+    # content (e.g. " 39| \usepackage{...}" → " \usepackage{...}").
+    _strip_line_number_prefixes(patch)
+
     # Recalculate old_count / new_count from actual hunk lines.
     # LLMs frequently get the @@ header counts wrong.
     for hunk in patch.hunks:
@@ -156,3 +160,27 @@ def parse_patch(diff_text: str) -> Patch | None:
             hunk.new_count = actual_new
 
     return patch if patch.hunks else None
+
+
+# Matches a diff line prefix (space/+/-) followed by a line-number prefix
+# like "  39| " that LLMs copy from numbered content.
+_LINE_NUM_RE = re.compile(r"^([ +-])\s*\d+\|\s?")
+
+
+def _strip_line_number_prefixes(patch: Patch) -> None:
+    """Remove line-number prefixes from hunk lines.
+
+    When the LLM is shown numbered content (``  39| \\usepackage{...}``), it
+    sometimes copies the prefix into the diff.  This corrupts both context
+    matching and the final file content.  Strip them early so downstream
+    code sees clean lines.
+    """
+    for hunk in patch.hunks:
+        cleaned: list[str] = []
+        for line in hunk.lines:
+            m = _LINE_NUM_RE.match(line)
+            if m:
+                # Keep the diff prefix (space/+/-) but drop the number prefix
+                line = m.group(1) + line[m.end():]
+            cleaned.append(line)
+        hunk.lines = cleaned

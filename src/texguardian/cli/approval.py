@@ -219,7 +219,14 @@ async def _apply_single_patch(
     validator = PatchValidator(session.config.safety)
     applier = PatchApplier(session.project_root)
 
+    # Correct filename if the LLM used a generic name that doesn't exist
     target_path = session.project_root / patch.file_path
+    if not target_path.exists() and patch.file_path.endswith(".tex"):
+        main_tex_name = session.config.project.main_tex
+        corrected = session.project_root / main_tex_name
+        if corrected.exists():
+            patch.file_path = main_tex_name
+            target_path = corrected
 
     # Validate
     result = validator.validate(patch, target_path)

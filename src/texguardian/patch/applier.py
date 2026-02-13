@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import re
 from pathlib import Path
 
 from texguardian.patch.parser import Patch
@@ -97,7 +98,14 @@ class PatchApplier:
 
     @staticmethod
     def _normalize(s: str) -> str:
-        """Normalize a line for comparison: strip trailing whitespace, collapse internal runs."""
+        """Normalize a line for comparison.
+
+        Strips trailing whitespace, collapses internal runs, and removes
+        line-number prefixes (``  39| ``) that LLMs sometimes copy from
+        numbered content.
+        """
+        # Strip line-number prefix if present (e.g. "  39| content")
+        s = re.sub(r"^\s*\d+\|\s?", "", s)
         return " ".join(s.split())
 
     def _find_hunk_position(self, lines: list[str], hunk, expected_pos: int) -> int | None:

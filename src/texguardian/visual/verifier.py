@@ -348,7 +348,16 @@ class VisualVerifier:
                 # Correct filename if the LLM used a generic name
                 target = self.session.project_root / patch.file_path
                 if not target.exists() and patch.file_path.endswith(".tex"):
-                    patch.file_path = main_tex_name
+                    corrected = self.session.project_root / main_tex_name
+                    if corrected.exists():
+                        patch.file_path = main_tex_name
+                    else:
+                        # Fallback: auto-detect
+                        from texguardian.config.settings import detect_main_tex
+
+                        detected = detect_main_tex(self.session.project_root)
+                        if detected:
+                            patch.file_path = detected
 
                 try:
                     success = applier.apply(patch)

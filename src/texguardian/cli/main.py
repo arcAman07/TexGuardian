@@ -50,6 +50,7 @@ from texguardian.config.settings import (
     GUARDIAN_DIR,
     SPEC_FILENAME,
     TexGuardianConfig,
+    detect_main_tex,
     find_config_path,
     get_project_root,
 )
@@ -99,13 +100,16 @@ def init(
             console.print(f"[red]Unknown provider: {provider}. Use 'bedrock' or 'openrouter'.[/red]")
             raise typer.Exit(1)
 
+    # Auto-detect main .tex file
+    detected_tex = detect_main_tex(directory) or "main.tex"
+
     # Create config file
     config_path = directory / CONFIG_FILENAME
     config_created = False
     if config_path.exists() and not force:
         console.print(f"[yellow]{CONFIG_FILENAME} already exists. Use --force to overwrite.[/yellow]")
     else:
-        _create_config_template(config_path, provider)
+        _create_config_template(config_path, provider, main_tex=detected_tex)
         config_created = True
 
     # Create paper spec
@@ -139,7 +143,10 @@ def init(
     console.print("\n[bold]Setup:[/bold]")
 
     step = 1
-    console.print(f"  {step}. [cyan]{CONFIG_FILENAME}[/cyan] — set [bold]main_tex[/bold] to your .tex file")
+    if detected_tex != "main.tex":
+        console.print(f"  {step}. [cyan]{CONFIG_FILENAME}[/cyan] — detected main file: [bold]{detected_tex}[/bold]")
+    else:
+        console.print(f"  {step}. [cyan]{CONFIG_FILENAME}[/cyan] — set [bold]main_tex[/bold] to your .tex file")
     step += 1
 
     if provider == "bedrock":
@@ -207,6 +214,25 @@ def chat(
     # Load config
     config = TexGuardianConfig.load(config_path)
     project_root = get_project_root(config_path)
+
+    # Validate main_tex — auto-detect if configured path doesn't exist
+    main_tex_path = project_root / config.project.main_tex
+    if not main_tex_path.exists():
+        detected = detect_main_tex(project_root)
+        if detected:
+            console.print(
+                f"[yellow]Configured main_tex '{config.project.main_tex}' not found.[/yellow]"
+            )
+            console.print(f"[yellow]Auto-detected: [bold]{detected}[/bold][/yellow]\n")
+            config.project.main_tex = detected
+        else:
+            console.print(
+                f"[red]Main .tex file not found: {config.project.main_tex}[/red]"
+            )
+            console.print(
+                f"Set [bold]project.main_tex[/bold] in {CONFIG_FILENAME} to your main .tex file."
+            )
+            raise typer.Exit(1)
 
     # Override model if specified
     if model:
@@ -286,7 +312,7 @@ def _prompt_provider() -> str:
     return "bedrock"
 
 
-def _create_config_template(path: Path, provider: str = "bedrock") -> None:
+def _create_config_template(path: Path, provider: str = "bedrock", main_tex: str = "main.tex") -> None:
     """Create texguardian.yaml template based on provider choice."""
     aws_key = os.environ.get("AWS_ACCESS_KEY_ID", "YOUR_AWS_ACCESS_KEY_ID")
     aws_secret = os.environ.get("AWS_SECRET_ACCESS_KEY", "YOUR_AWS_SECRET_ACCESS_KEY")
@@ -310,11 +336,12 @@ providers:
     # profile: "default"  # Alternative: use AWS profile from ~/.aws/credentials
 """
 
+    comment = "" if main_tex != "main.tex" else "  # Change this to your main .tex file"
     template = f"""\
 # TexGuardian Configuration
 
 project:
-  main_tex: "main.tex"  # Change this to your main .tex file
+  main_tex: "{main_tex}"{comment}
   output_dir: "build"
 
 {provider_block}

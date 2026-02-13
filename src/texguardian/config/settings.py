@@ -145,3 +145,36 @@ def find_config_path(start_dir: Path | None = None) -> Path | None:
 def get_project_root(config_path: Path) -> Path:
     """Get project root directory from config path."""
     return config_path.parent
+
+
+def detect_main_tex(project_root: Path) -> str | None:
+    r"""Auto-detect the main ``.tex`` file in *project_root*.
+
+    Searches for ``.tex`` files containing ``\documentclass`` and returns the
+    best candidate's name (relative to *project_root*).  Prefers files in the
+    root directory over subdirectories.  Returns ``None`` if nothing is found.
+    """
+    skip_dirs = {".texguardian", "build", "backup", "_original", ".git", "__pycache__"}
+    candidates: list[tuple[int, str]] = []  # (depth, relative_path)
+
+    for tex_file in project_root.rglob("*.tex"):
+        # Skip build/backup directories
+        rel = tex_file.relative_to(project_root)
+        if any(part in skip_dirs for part in rel.parts):
+            continue
+
+        try:
+            content = tex_file.read_text(errors="ignore")
+        except Exception:
+            continue
+
+        if r"\documentclass" in content:
+            depth = len(rel.parts) - 1  # 0 = root level
+            candidates.append((depth, str(rel)))
+
+    if not candidates:
+        return None
+
+    # Sort by depth (prefer root-level), then alphabetically
+    candidates.sort(key=lambda c: (c[0], c[1]))
+    return candidates[0][1]

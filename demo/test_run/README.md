@@ -35,16 +35,12 @@ texguardian chat
 Inside the chat session:
 
 ```
-/compile --clean
-/verify
 /venue
 /review full
 ```
 
-1. `/compile --clean` — compile and see the broken PDF
-2. `/verify` — lists all 6 issues found in the paper
-3. `/venue` — select ICLR 2026 template and venue settings
-4. `/review full` — runs the full 7-step fix pipeline until score >= 90
+1. `/venue` — select ICLR 2026 template and venue settings
+2. `/review full` — runs the full 7-step fix pipeline until score >= 90
 
 After `/review full` completes, the fixed PDF is at `build/demo_paper.pdf`.
 Compare it side-by-side with `error_paper.pdf` to see all issues resolved.

@@ -210,11 +210,11 @@ Step 2: LLM Fix
 |---------|---------|-------------|
 | `/verify` | `/v`, `/check` | Run all verification checks (figures, citations, custom rules) |
 | `/figures [verify\|fix]` | `/figs`, `/fig` | Verify and fix all figures |
-| `/tables [verify\|fix]` | `/t` | Verify and fix all tables |
+| `/tables [verify\|fix]` | `/tabs`, `/tab` | Verify and fix all tables |
 | `/citations [verify\|fix]` | `/cite`, `/refs` | Verify, validate (CrossRef/S2), and fix citations |
 | `/section <name> [fix]` | `/sec` | Deep analysis of a specific section |
 | `/page_count` | `/pages`, `/pc` | Page count with section breakdown and limit check |
-| `/feedback` | `/review_full` | Comprehensive paper review with scoring |
+| `/feedback` | — | Comprehensive paper review with scoring |
 | `/suggest_refs` | `/suggest_citations` | AI-powered citation recommendations |
 
 ### Paper Preparation
@@ -223,7 +223,7 @@ Step 2: LLM Fix
 |---------|---------|-------------|
 | `/anonymize` | `/anon`, `/blind` | Make paper anonymous for double-blind review |
 | `/camera_ready` | `/cr`, `/final` | Convert draft to camera-ready version |
-| `/venue <name> [year]` | `/templates`, `/style` | Download conference LaTeX templates |
+| `/venue <name> [year]` | `/template`, `/conf` | Download conference LaTeX templates |
 | `/compile` | `/c`, `/build` | Compile LaTeX document with latexmk |
 | `/review` | `/full`, `/pipeline` | Full pipeline: compile -> verify -> fix -> repeat |
 | `/polish_visual` | `/pv`, `/visual` | Visual verification with vision model |

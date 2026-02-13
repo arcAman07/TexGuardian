@@ -167,12 +167,12 @@ pip install build
 python -m build
 
 # Check what's in the wheel
-unzip -l dist/texguardian-0.1.0-py3-none-any.whl | head -30
+unzip -l dist/texguardian-0.2.0-py3-none-any.whl | head -30
 
 # Test install from wheel in a clean venv
 python -m venv /tmp/test-install
 source /tmp/test-install/bin/activate
-pip install dist/texguardian-0.1.0-py3-none-any.whl
+pip install dist/texguardian-0.2.0-py3-none-any.whl
 texguardian --help
 texguardian doctor
 deactivate

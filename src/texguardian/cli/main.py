@@ -65,6 +65,29 @@ app = typer.Typer(
 console = Console(highlight=False)
 
 
+def _version_callback(value: bool) -> None:
+    """Print version and exit."""
+    if value:
+        from texguardian import __version__
+
+        console.print(f"texguardian {__version__}")
+        raise typer.Exit()
+
+
+@app.callback()
+def main(
+    version: bool = typer.Option(
+        None,
+        "--version",
+        "-V",
+        callback=_version_callback,
+        is_eager=True,
+        help="Show version and exit.",
+    ),
+) -> None:
+    """Claude Code-style terminal chat for LaTeX papers."""
+
+
 @app.command()
 def init(
     directory: Path = typer.Argument(
@@ -313,10 +336,11 @@ def _prompt_provider() -> str:
 
 
 def _create_config_template(path: Path, provider: str = "bedrock", main_tex: str = "main.tex") -> None:
-    """Create texguardian.yaml template based on provider choice."""
-    aws_key = os.environ.get("AWS_ACCESS_KEY_ID", "YOUR_AWS_ACCESS_KEY_ID")
-    aws_secret = os.environ.get("AWS_SECRET_ACCESS_KEY", "YOUR_AWS_SECRET_ACCESS_KEY")
+    """Create texguardian.yaml template based on provider choice.
 
+    Credentials are never embedded in the config file. Users should set
+    them via environment variables or a .env file in their project root.
+    """
     if provider == "openrouter":
         provider_block = """\
 providers:
@@ -326,14 +350,16 @@ providers:
     base_url: "https://openrouter.ai/api/v1"
 """
     else:
-        provider_block = f"""\
+        provider_block = """\
 providers:
   default: "bedrock"
   bedrock:
     region: "us-east-1"
-    access_key_id: "{aws_key}"
-    secret_access_key: "{aws_secret}"
-    # profile: "default"  # Alternative: use AWS profile from ~/.aws/credentials
+    # Credentials are loaded from environment variables or .env file:
+    #   AWS_ACCESS_KEY_ID=your-key
+    #   AWS_SECRET_ACCESS_KEY=your-secret
+    # Or use an AWS profile from ~/.aws/credentials:
+    # profile: "default"
 """
 
     comment = "" if main_tex != "main.tex" else "  # Change this to your main .tex file"

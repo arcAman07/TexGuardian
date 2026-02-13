@@ -5,6 +5,20 @@ All notable changes to TexGuardian will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.4] - 2025-02-13
+
+### Fixed
+
+- **UI: Raw JSON no longer dumped in `/feedback` and `/section`** — LLM responses are now parsed silently and only the formatted Rich tables/panels are displayed. Raw output is shown only as a fallback when JSON parsing fails.
+- **Security: AWS credentials no longer embedded in `texguardian.yaml`** — `texguardian init` now writes placeholder comments directing users to set credentials via environment variables or `.env` file, preventing accidental key leakage through version control.
+
+### Changed
+
+- **Enhanced `/report` command** — now auto-compiles, runs verification checks, computes a quality score (0-100), and shows detailed Rich tables for status overview, verification checks, document content, section breakdown, and configuration. Supports `/report save` to write a plain-text markdown report to disk.
+- **Enhanced `/venue` command** — auto-update now includes compilation rollback: if adding a style file breaks compilation, the change is reverted and manual instructions are shown instead.
+- **Added `--version` / `-V` flag** to the CLI
+- **Added `user_demo/` to `.gitignore`**
+
 ## [0.3.3] - 2025-02-13
 
 ### Changed

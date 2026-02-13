@@ -301,12 +301,17 @@ class VenueCommand(Command):
         venue: str,
         console: Console,
     ) -> None:
-        """Auto-update the main .tex file to use downloaded style files."""
+        """Auto-update the main .tex file to use downloaded style files.
+
+        After modification, runs a quick compilation check. If compilation
+        breaks, reverts the change and prints manual instructions instead.
+        """
         tex_path = session.main_tex_path
         if not tex_path.exists():
             return
 
         content = tex_path.read_text()
+        original_content = content  # Keep for rollback
 
         # Split at \begin{document} to only modify the preamble
         doc_marker = r"\begin{document}"
@@ -367,10 +372,36 @@ class VenueCommand(Command):
                     )
 
         if changes:
-            tex_path.write_text(preamble + body)
-            console.print("\n[bold]Auto-updated main .tex file:[/bold]")
-            for change in changes:
-                console.print(f"  [green]✓[/green] {change}")
+            new_content = preamble + body
+            tex_path.write_text(new_content)
+
+            # Verify compilation still works after the modification
+            compile_ok = self._quick_compile_check(session)
+            if compile_ok:
+                console.print("\n[bold]Auto-updated main .tex file:[/bold]")
+                for change in changes:
+                    console.print(f"  [green]✓[/green] {change}")
+            else:
+                # Revert — the style file likely conflicts with the current document
+                tex_path.write_text(original_content)
+                console.print(
+                    "\n[yellow]⚠ Auto-update reverted — the style file caused "
+                    "compilation errors.[/yellow]"
+                )
+                console.print(
+                    "[yellow]  This usually means the style file redefines the "
+                    "document class or conflicts with existing packages.[/yellow]"
+                )
+                pkg_names = [
+                    Path(f).stem for f in downloaded_files
+                    if f.endswith(".sty") or f.endswith(".cls")
+                ]
+                if pkg_names:
+                    console.print("\n[bold]To use the downloaded style manually:[/bold]")
+                    for pkg in pkg_names:
+                        console.print(f"  1. Add [cyan]\\usepackage{{{pkg}}}[/cyan] to your preamble")
+                    console.print("  2. Remove any conflicting packages or class options")
+                    console.print("  3. Run [cyan]/compile[/cyan] to verify")
         else:
             # No auto-update was possible — show manual hint
             pkg_names = [
@@ -381,6 +412,41 @@ class VenueCommand(Command):
                 console.print("\n[bold]Downloaded style files:[/bold]")
                 for pkg in pkg_names:
                     console.print(f"  [cyan]{pkg}[/cyan]")
+
+    @staticmethod
+    def _quick_compile_check(session: SessionState) -> bool:
+        """Run a fast single-pass pdflatex to test if the .tex file compiles.
+
+        Uses ``-interaction=nonstopmode -draftmode`` for speed (no PDF output).
+        Returns True if the exit code is 0, False otherwise.
+        """
+        import subprocess
+
+        from texguardian.core.toolchain import find_binary
+
+        pdflatex = find_binary("pdflatex", "latex")
+        if not pdflatex:
+            return True  # Can't check — assume OK
+
+        output_dir = session.project_root / session.config.project.output_dir
+        output_dir.mkdir(parents=True, exist_ok=True)
+
+        try:
+            result = subprocess.run(
+                [
+                    pdflatex,
+                    "-interaction=nonstopmode",
+                    "-draftmode",
+                    f"-output-directory={output_dir}",
+                    str(session.main_tex_path),
+                ],
+                capture_output=True,
+                timeout=60,
+                cwd=str(session.project_root),
+            )
+            return result.returncode == 0
+        except Exception:
+            return True  # Timeout or error — don't block, assume OK
 
     def _list_venues(self, console: Console) -> None:
         """List known venues."""

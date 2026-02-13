@@ -571,8 +571,8 @@ class SectionCommand(Command):
             system=COMMAND_SYSTEM_PROMPT,
             max_tokens=3000,
             temperature=0.3,
+            print_output=False,
         )
-        console.print()  # newline after streaming
 
         # Try to parse JSON and display structured analysis
         import json
@@ -584,7 +584,11 @@ class SectionCommand(Command):
                 data = json.loads(content[json_start:json_end])
                 self._display_analysis(data, console)
             except json.JSONDecodeError:
-                console.print("\n[dim]Note: Could not parse structured analysis.[/dim]")
+                console.print("[dim]Note: Could not parse structured analysis. Showing raw response:[/dim]\n")
+                console.print(content)
+        else:
+            # No JSON found — show the raw response
+            console.print(content)
 
     @staticmethod
     def _safe_int(value: object, default: int = 0) -> int:

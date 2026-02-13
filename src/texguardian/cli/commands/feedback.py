@@ -311,8 +311,8 @@ class FeedbackCommand(Command):
                 system=COMMAND_SYSTEM_PROMPT,
                 max_tokens=MAX_OUTPUT_TOKENS,
                 temperature=0.3,
+                print_output=False,
             )
-            console.print()  # newline after streaming
 
             # Extract JSON from response — try outermost braces
             json_start = response_text.find("{")
@@ -324,8 +324,11 @@ class FeedbackCommand(Command):
                     feedback = json.loads(json_str)
                     self._display_feedback(feedback, console)
                 except json.JSONDecodeError:
-                    console.print("\n[dim]Note: Could not parse structured feedback.[/dim]")
-            # If JSON parse fails, content was already streamed above
+                    console.print("[dim]Note: Could not parse structured feedback. Showing raw response:[/dim]\n")
+                    console.print(response_text)
+            else:
+                # No JSON found — show the raw response
+                console.print(response_text)
 
         except Exception as e:
             console.print(f"[red]Error getting feedback: {e}[/red]")

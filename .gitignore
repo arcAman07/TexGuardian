@@ -207,6 +207,12 @@ report*.md
 LAUNCH_PLAN.md
 
 # -----------------------
+# Launch / marketing / testing (local only, not in repo)
+# -----------------------
+launch_demo/
+user_demo/
+
+# -----------------------
 # Misc
 # -----------------------
 *.tmp

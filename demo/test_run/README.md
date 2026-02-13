@@ -18,78 +18,95 @@ texguardian chat
 | Wide table | Line ~171 | 9-column table overflows margins |
 | Duplicate `\usepackage{natbib}` | Lines 8,15 | natbib loaded twice |
 
-## Commands to Test (Screen Recording Guide)
+## Screen Recording Commands
 
-Run these commands inside `texguardian chat` to demonstrate all features:
+Run these commands inside `texguardian chat` to demo all features.
+Each section is designed to flow naturally for a screen recording.
 
-### Core Commands
+### 1. Orientation (Non-LLM)
 ```
-/help                    # Show all available commands
-/compile                 # Compile the LaTeX document
-/compile --clean         # Clean build artifacts and recompile
-/verify                  # Run all verification checks
-/page_count              # Show page count and section breakdown
-/report                  # Generate comprehensive verification report
-/model                   # Show current LLM model
-/model list              # List available models
+/help
+/compile --clean
+/page_count
+/verify
+/report
 ```
 
-### Content Analysis & Fixing
+### 2. Deep Analysis (LLM)
 ```
-/figures                 # Verify all figures
-/figures fix             # Auto-fix figure issues (overflow)
-/figures analyze         # Deep AI analysis of figures
-/tables                  # Verify all tables
-/tables fix              # Auto-fix table issues
-/tables analyze          # Deep AI analysis of tables
-/citations               # Verify citations
-/citations fix           # Auto-fix citation issues
-/suggest_refs            # AI-powered citation recommendations
-/section                 # List all sections
-/section Introduction    # Analyze Introduction section
-/section Introduction fix # Auto-fix Introduction issues
-/feedback                # Get comprehensive paper feedback with scores
+/feedback
+/section
+/section Introduction
 ```
 
-### Submission Workflow
+### 3. Citations
 ```
-/venue                   # List supported conference venues
-/venue iclr 2026         # Download ICLR 2026 style files
-/camera_ready            # Convert to camera-ready format
-/anonymize               # Make paper anonymous for review
-```
-
-### Visual Verification
-```
-/polish_visual           # Run visual verification loop with vision model
+/citations
+/citations fix
+/suggest_refs
 ```
 
-### Full Pipeline
+### 4. Figures
 ```
-/review quick            # Run full review pipeline (without visual polish)
-/review full             # Run full review pipeline (with visual polish)
-```
-
-### File Operations
-```
-/read demo_paper.tex     # Display file with line numbers
-/grep citep              # Search for pattern in files
-/bash ls *.tex           # Run shell command
+/figures
+/figures fix
+/figures analyze
 ```
 
-### Version Control
+### 5. Tables
 ```
-/diff                    # Show changes since last checkpoint
-/revert                  # List/revert to previous checkpoint
+/tables
+/tables fix
+/tables analyze
+```
+
+### 6. Section Editing
+```
+/section Introduction fix
+/section Method
+```
+
+### 7. Submission Workflow
+```
+/venue
+/venue list
+/anonymize
+/camera_ready
+```
+
+### 8. Visual Polish
+```
+/compile
+/polish_visual
+```
+
+### 9. Full Pipeline
+```
+/review quick
+```
+
+### 10. Utilities
+```
+/model
+/model list
+/read demo_paper.tex
+/grep citep
+/bash ls *.tex
+/diff
+/revert
+/watch on
+/watch off
 ```
 
 ## Files
 
 | File | Description |
 |------|-------------|
-| `demo_paper.tex` | Main LaTeX paper (Sparse-MoE-Doc) |
+| `demo_paper.tex` | Main LaTeX paper (Sparse-MoE-Doc) with intentional issues |
 | `demo_refs.bib` | Bibliography with 11 references |
 | `texguardian.yaml` | TexGuardian configuration |
 | `paper_spec.md` | Paper specification (ICLR 2026, custom checks) |
 | `error_paper.pdf` | Pre-compiled PDF showing issues before fixes |
 | `demo_paper.pdf` | Latest compiled PDF |
+| `iclr2026_conference.sty` | ICLR 2026 style file |
+| `iclr2026_conference.bst` | ICLR 2026 bibliography style |

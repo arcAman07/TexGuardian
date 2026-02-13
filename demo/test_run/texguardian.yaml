@@ -8,7 +8,7 @@ providers:
   default: "bedrock"
   bedrock:
     region: "us-east-1"
-    # Credentials loaded from .env automatically
+    # Credentials loaded from environment variables automatically
     # access_key_id: "${AWS_ACCESS_KEY_ID}"
     # secret_access_key: "${AWS_SECRET_ACCESS_KEY}"
     # profile: "default"  # Alternative: use AWS profile from ~/.aws/credentials

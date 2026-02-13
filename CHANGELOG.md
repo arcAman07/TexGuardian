@@ -5,6 +5,25 @@ All notable changes to TexGuardian will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.3] - 2025-02-13
+
+### Changed
+
+- **Website fixes** — all GitHub URLs corrected to `arcAman07/TexGuardian`, OG/canonical meta tags updated, PyPI install added as primary install option
+- **Release animation** — added Manim-generated release animation (GIF + MP4) in `docs/assets/`
+- **PyPI badge** added to website hero section
+
+## [0.3.2] - 2025-02-13
+
+### Changed
+
+- **Review pipeline scoring fixed** — uses fresh verification counts after patches, graduated penalties (errors -7, warnings -3), 80/20 visual blend
+- **Visual steps merged** — Steps 7+8 combined into single Step 7 with unified VisualVerifier (7 steps total, down from 8)
+- **Verification reuse** — `_step_verify()` now calls `run_verify_checks()` from `verify.py` instead of duplicating logic
+- **PDF path displayed** — review pipeline now shows output PDF path after compilation and in the final summary
+- **Citation display improved** — explains `~` (needs correction) and `?` (not found) symbols with counts
+- **Demo paper redesigned** — 6 intentional issues for live demo: duplicate natbib, bare `\cite{}`, figure overflow (1.8x), `\hline` table, 2 overflowing tables (11 and 10 columns)
+
 ## [0.3.1] - 2025-02-13
 
 ### Changed

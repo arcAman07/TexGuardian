@@ -1,4 +1,4 @@
-"""TexGuardian v0.3.2 release animation — 15-second GIF."""
+"""TexGuardian v0.3.3 release animation — 15-second GIF."""
 
 from manim import *
 
@@ -114,7 +114,7 @@ class TexGuardianRelease(Scene):
         # ── Phase 4: Version + CTA (12-15s) ───────────────────────
         self.play(FadeOut(badges), run_time=0.3)
 
-        version = Text("v0.3.2", font="Inter", weight=BOLD, font_size=48, color=BRAND_BLUE)
+        version = Text("v0.3.3", font="Inter", weight=BOLD, font_size=48, color=BRAND_BLUE)
         version.move_to(DOWN * 0.1)
 
         install_cmd = Text(

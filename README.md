@@ -71,17 +71,7 @@ TexGuardian needs LaTeX and Poppler installed on your system for compilation and
 
 #### LaTeX installation
 
-**Option A: Full TeX Live (~4 GB)** — includes every package, no missing-package issues:
-
-```bash
-# macOS
-brew install --cask mactex-no-gui
-
-# Ubuntu/Debian
-sudo apt install texlive-full
-```
-
-**Option B: TinyTeX (~250 MB)** — lightweight alternative, installs only what you need:
+**Option A: TinyTeX (~250 MB) — recommended:**
 
 ```bash
 # macOS / Linux
@@ -91,12 +81,22 @@ curl -sL "https://yihui.org/tinytex/install-bin-unix.sh" | sh
 export PATH="$HOME/Library/TinyTeX/bin/universal-darwin:$PATH"  # macOS
 export PATH="$HOME/.TinyTeX/bin/x86_64-linux:$PATH"             # Linux
 
-# Install packages needed by your paper (TinyTeX auto-installs on first compile,
-# or install manually):
-tlmgr install booktabs natbib hyperref pgfplots xcolor float geometry
+# Install common academic packages:
+tlmgr install booktabs natbib hyperref pgfplots xcolor float geometry \
+              amsmath amssymb graphicx tikz caption subcaption
 ```
 
-TinyTeX is recommended for CI pipelines, lightweight setups, or if you don't want a 4 GB install. See [yihui.org/tinytex](https://yihui.org/tinytex/) for details.
+TinyTeX is a minimal, portable TeX Live distribution. Missing packages are auto-installed on first compile, or install manually with `tlmgr install <pkg>`. See [yihui.org/tinytex](https://yihui.org/tinytex/) for details.
+
+**Option B: Full TeX Live (~4 GB)** — includes every package, no missing-package issues:
+
+```bash
+# macOS
+brew install --cask mactex-no-gui
+
+# Ubuntu/Debian
+sudo apt install texlive-full
+```
 
 ### Verify installation
 
@@ -109,10 +109,10 @@ TexGuardian Doctor
 
 Checking external tools...
 
-  ✓ latexmk      /usr/local/bin/latexmk
-  ✓ pdflatex     /usr/local/bin/pdflatex
-  ✓ pdfinfo      /usr/local/bin/pdfinfo
-  ✓ pdftoppm     /usr/local/bin/pdftoppm
+  ✓ latexmk      ~/Library/TinyTeX/bin/universal-darwin/latexmk
+  ✓ pdflatex     ~/Library/TinyTeX/bin/universal-darwin/pdflatex
+  ✓ pdfinfo      /opt/homebrew/bin/pdfinfo
+  ✓ pdftoppm     /opt/homebrew/bin/pdftoppm
 
 All tools found. You're good to go!
 ```

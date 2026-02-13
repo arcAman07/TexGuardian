@@ -30,14 +30,20 @@ def _latex_search_paths() -> list[str]:
     if env_path:
         paths.append(env_path)
 
+    system = platform.system()
+    machine = platform.machine()
+
+    # TinyTeX — preferred lightweight distribution (~250 MB)
+    if system == "Darwin":
+        paths.append(str(Path.home() / "Library/TinyTeX/bin/universal-darwin"))
+    else:
+        paths.append(str(Path.home() / ".TinyTeX/bin/x86_64-linux"))
+
     # MacTeX stable symlink
     paths.append("/Library/TeX/texbin")
     paths.append("/usr/texbin")
 
     # TeX Live year-versioned installs — glob and sort newest-first
-    system = platform.system()
-    machine = platform.machine()
-
     if system == "Darwin":
         arch_suffix = "universal-darwin"
         tl_glob = f"/usr/local/texlive/*/bin/{arch_suffix}"
@@ -50,12 +56,6 @@ def _latex_search_paths() -> list[str]:
     if tl_glob:
         # sorted() descending so e.g. 2025 comes before 2024
         paths.extend(sorted(glob.glob(tl_glob), reverse=True))
-
-    # TinyTeX
-    if system == "Darwin":
-        paths.append(str(Path.home() / "Library/TinyTeX/bin/universal-darwin"))
-    else:
-        paths.append(str(Path.home() / ".TinyTeX/bin/x86_64-linux"))
 
     # System paths
     paths.extend(["/usr/bin", "/usr/local/bin"])
@@ -132,12 +132,24 @@ def get_install_hint(tool_name: str) -> str:
 
     hints: dict[str, dict[str, str]] = {
         "latexmk": {
-            "Darwin": "brew install --cask mactex-no-gui   # or: brew install --cask mactex",
-            "Linux": "sudo apt install texlive-full   # or: sudo dnf install texlive-scheme-full",
+            "Darwin": (
+                'curl -sL "https://yihui.org/tinytex/install-bin-unix.sh" | sh'
+                "   # or: brew install --cask mactex-no-gui"
+            ),
+            "Linux": (
+                'curl -sL "https://yihui.org/tinytex/install-bin-unix.sh" | sh'
+                "   # or: sudo apt install texlive-full"
+            ),
         },
         "pdflatex": {
-            "Darwin": "brew install --cask mactex-no-gui",
-            "Linux": "sudo apt install texlive-latex-base",
+            "Darwin": (
+                'curl -sL "https://yihui.org/tinytex/install-bin-unix.sh" | sh'
+                "   # or: brew install --cask mactex-no-gui"
+            ),
+            "Linux": (
+                'curl -sL "https://yihui.org/tinytex/install-bin-unix.sh" | sh'
+                "   # or: sudo apt install texlive-latex-base"
+            ),
         },
         "pdfinfo": {
             "Darwin": "brew install poppler",

@@ -30,7 +30,7 @@ safety:
     - "build/**"
 
 latex:
-  compiler: "/Users/arcaman07/Library/TinyTeX/bin/universal-darwin/latexmk"
+  compiler: "latexmk"
   engine: "pdflatex"
   output_dir: "build"
 

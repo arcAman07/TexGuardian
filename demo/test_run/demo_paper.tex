@@ -1,7 +1,8 @@
 \documentclass{article}
 \usepackage[margin=1in]{geometry}
-\usepackage{amsmath,amssymb}
 \usepackage{graphicx}
+\usepackage{amsmath}
+\usepackage{amssymb}
 \usepackage{booktabs}
 \usepackage{hyperref}
 \usepackage{natbib}
@@ -124,7 +125,10 @@ scaling to 128K tokens, (3) evaluation on four benchmarks (Figure~\ref{fig:pipel
 \section{Method}
 
 We partition document $D$ into segments $S = \{s_1, \ldots, s_M\}$ with content
-types $c_i \in \{$prose, table, equation, caption$\}$. The routing function is:
+types $c_i \in \{$prose, table, equation, caption$\}$.
+As shown in Figure~\ref{fig:expert_specialization}, each expert develops
+specialization for specific content types.
+The routing function is:
 $g(s_i) = \text{TopK}(\text{softmax}(W_r \cdot \text{pool}(s_i) + b_r), k)$.
 
 \begin{figure}[H]

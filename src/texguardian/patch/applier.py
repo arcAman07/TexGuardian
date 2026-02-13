@@ -85,8 +85,13 @@ class PatchApplier:
 
         return result, new_offset
 
+    @staticmethod
+    def _normalize(s: str) -> str:
+        """Normalize a line for comparison: strip trailing whitespace, collapse internal runs."""
+        return " ".join(s.split())
+
     def _verify_context(self, lines: list[str], pos: int, hunk) -> bool:
-        """Verify that context lines match."""
+        """Verify that context lines match (whitespace-tolerant)."""
         line_idx = pos
 
         for hunk_line in hunk.lines:
@@ -94,14 +99,18 @@ class PatchApplier:
                 # Context line should match
                 if line_idx >= len(lines):
                     return False
-                expected = hunk_line[1:].rstrip("\n")
-                actual = lines[line_idx].rstrip("\n")
+                expected = self._normalize(hunk_line[1:])
+                actual = self._normalize(lines[line_idx])
                 if expected != actual:
                     return False
                 line_idx += 1
             elif hunk_line.startswith("-"):
                 # Removed line should be present
                 if line_idx >= len(lines):
+                    return False
+                expected = self._normalize(hunk_line[1:])
+                actual = self._normalize(lines[line_idx])
+                if expected != actual:
                     return False
                 line_idx += 1
 
@@ -110,7 +119,7 @@ class PatchApplier:
     def _find_context(self, lines: list[str], hunk, start_pos: int) -> int | None:
         """Try to find matching context nearby."""
         # Look within a window around expected position
-        window = 10
+        window = 30
 
         for offset in range(-window, window + 1):
             pos = start_pos + offset

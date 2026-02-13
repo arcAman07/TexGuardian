@@ -16,10 +16,11 @@ from rich.console import Console
 from rich.table import Table
 from rich.panel import Panel
 
-# Paper directories
+# Paper directories (relative to repo root)
+_REPO_ROOT = Path(__file__).parent.parent.parent
 PAPERS = {
-    "position_paper": Path("/Users/arcaman07/Documents/Projects/TeXGuardian/examples/position_paper"),
-    "esolang_paper": Path("/Users/arcaman07/Documents/Projects/TeXGuardian/examples/esolang_paper"),
+    "position_paper": _REPO_ROOT / "examples" / "position_paper",
+    "esolang_paper": _REPO_ROOT / "examples" / "esolang_paper",
 }
 
 # Main tex files for each paper

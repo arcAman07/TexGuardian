@@ -107,7 +107,7 @@ asciinema upload demo.cast
 ## 2. Push to GitHub
 
 ```bash
-cd /Users/arcaman07/Documents/Projects/TeXGuardian
+cd path/to/TexGuardian
 
 # Initialize git
 git init
@@ -199,7 +199,7 @@ export TWINE_PASSWORD=pypi-YOUR_TOKEN_HERE
 ### Build and upload
 
 ```bash
-cd /Users/arcaman07/Documents/Projects/TeXGuardian
+cd path/to/TexGuardian
 
 # Clean previous builds
 rm -rf dist/ build/ *.egg-info src/*.egg-info

@@ -44,6 +44,9 @@ Generate unified diff patches to fix these issues:
 3. **Unreferenced figures**: Either add \\ref{{fig:name}} in text or mark for removal
 4. **Caption quality**: Improve captions to be self-contained and informative
 5. **Placement issues**: Fix [htbp] placement specifiers if needed
+6. **Width overflow**: Reduce figure width to fit within \\columnwidth (e.g. change width=1.5\\columnwidth to width=\\columnwidth)
+7. **Negative spacing**: Remove \\hspace{{-...}} hacks that force positioning
+8. **TikZ overflow**: Ensure TikZ diagrams fit within column width by adjusting node positions and scaling
 
 For captions, follow these guidelines:
 - Start with "Overview of..." or "Illustration of..." or similar
@@ -204,9 +207,10 @@ class FiguresCommand(Command):
             return
 
         # Standard modes
-        if fix_mode and verification_result["issues"]:
-            console.print("\n[bold]Step 2: Fixing Issues[/bold]")
-            await self._fix_figures(session, console, verification_result)
+        if fix_mode:
+            if verification_result["issues"]:
+                console.print("\n[bold]Step 2: Fixing Issues[/bold]")
+                await self._fix_figures(session, console, verification_result)
 
             console.print("\n[bold]Step 3: Visual Verification[/bold]")
             await self._visual_verify_figures(session, console)
@@ -275,6 +279,25 @@ class FiguresCommand(Command):
                         "severity": "warning",
                     })
 
+                # Check for overflow issues
+                fig_content = fig.get("content", "")
+                width_match = re.search(
+                    r'width\s*=\s*(\d+\.?\d*)\s*\\(?:columnwidth|textwidth)',
+                    fig_content,
+                )
+                if width_match and float(width_match.group(1)) > 1.0:
+                    result["issues"].append({
+                        "type": "overflow_width",
+                        "figure": label or "Unknown",
+                        "severity": "warning",
+                    })
+                if re.search(r'\\hspace\s*\{-', fig_content):
+                    result["issues"].append({
+                        "type": "negative_hspace",
+                        "figure": label or "Unknown",
+                        "severity": "warning",
+                    })
+
             # Display results
             table = Table(title=f"Figures ({len(figures)})")
             table.add_column("Label", style="cyan")
@@ -287,8 +310,17 @@ class FiguresCommand(Command):
                 caption = fig["caption"][:40] + "..." if len(fig["caption"]) > 40 else fig["caption"]
                 refs = str(fig["ref_count"])
 
+                # Check if this figure has overflow issues
+                has_overflow = any(
+                    i["type"] in ("overflow_width", "negative_hspace")
+                    and i["figure"] == (fig["label"] or "Unknown")
+                    for i in result["issues"]
+                )
+
                 if not fig["label"]:
                     status = "[red]No label[/red]"
+                elif has_overflow:
+                    status = "[yellow]Overflow[/yellow]"
                 elif fig["ref_count"] == 0:
                     status = "[yellow]No refs[/yellow]"
                 elif len(fig["caption"]) < 20:
@@ -615,6 +647,17 @@ async def generate_and_apply_figure_fixes(
 
         if not caption or len(caption) < 20:
             issues.append({"type": "poor_caption", "figure": label or "Unknown", "severity": "warning"})
+
+        # Check for overflow issues
+        fig_content = fig.get("content", "")
+        width_match = re.search(
+            r'width\s*=\s*(\d+\.?\d*)\s*\\(?:columnwidth|textwidth)',
+            fig_content,
+        )
+        if width_match and float(width_match.group(1)) > 1.0:
+            issues.append({"type": "overflow_width", "figure": label or "Unknown", "severity": "warning"})
+        if re.search(r'\\hspace\s*\{-', fig_content):
+            issues.append({"type": "negative_hspace", "figure": label or "Unknown", "severity": "warning"})
 
     if not issues:
         console.print("  [green]✓[/green] No figure issues to fix")

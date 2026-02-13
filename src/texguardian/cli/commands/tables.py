@@ -200,9 +200,10 @@ class TablesCommand(Command):
             return
 
         # Standard modes
-        if fix_mode and verification_result["issues"]:
-            console.print("\n[bold]Step 2: Fixing Issues[/bold]")
-            await self._fix_tables(session, console, verification_result)
+        if fix_mode:
+            if verification_result["issues"]:
+                console.print("\n[bold]Step 2: Fixing Issues[/bold]")
+                await self._fix_tables(session, console, verification_result)
 
             console.print("\n[bold]Step 3: Visual Verification[/bold]")
             await self._visual_verify_tables(session, console)

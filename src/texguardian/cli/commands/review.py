@@ -156,6 +156,12 @@ class ReviewCommand(Command):
                 console.print("[bold]Step 7/7:[/bold] Visual Polish")
                 console.print("  [dim]Skipped (use 'full' mode to enable)[/dim]")
 
+            # Final recompile to ensure PDF reflects all patches
+            if result.patches_applied > 0:
+                console.print(Rule(style="dim"))
+                console.print("[bold]Final Compile[/bold]")
+                await self._step_compile(session, console, result)
+
             # Calculate current score
             console.print(Rule(style="dim"))
             await self._step_feedback(session, console, result)
@@ -353,15 +359,18 @@ class ReviewCommand(Command):
 
             console.print(f"  Found {len(figures)} figures")
             if issues > 0:
-                console.print(f"    [yellow]•[/yellow] {issues} potential issues (missing labels/captions)")
-                if fix and session.llm_client:
-                    from texguardian.cli.commands.figures import generate_and_apply_figure_fixes
+                console.print(f"    [yellow]•[/yellow] {issues} structural issues (missing labels/captions)")
 
-                    applied = await generate_and_apply_figure_fixes(
-                        session, console, auto_approve=True, print_output=False,
-                    )
-                    result.patches_applied += applied
-            else:
+            # Always run LLM analysis when fixing — catches overflow, formatting,
+            # and other issues the simple structural check misses.
+            if fix and session.llm_client:
+                from texguardian.cli.commands.figures import generate_and_apply_figure_fixes
+
+                applied = await generate_and_apply_figure_fixes(
+                    session, console, auto_approve=True, print_output=False,
+                )
+                result.patches_applied += applied
+            elif issues == 0:
                 console.print("    [green]✓[/green] All figures have labels and captions")
 
         except Exception as e:
@@ -396,20 +405,27 @@ class ReviewCommand(Command):
                     issues += 1
                 if not caption or len(caption) < 10:
                     issues += 1
+                # Check for \hline usage (should use booktabs)
+                table_content = tab.get("content", "")
+                if "\\hline" in table_content and "\\toprule" not in table_content:
+                    issues += 1
 
             result.tables_issues = issues
 
             console.print(f"  Found {len(tables)} tables")
             if issues > 0:
                 console.print(f"    [yellow]•[/yellow] {issues} potential issues")
-                if fix and session.llm_client:
-                    from texguardian.cli.commands.tables import generate_and_apply_table_fixes
 
-                    applied = await generate_and_apply_table_fixes(
-                        session, console, auto_approve=True, print_output=False,
-                    )
-                    result.patches_applied += applied
-            else:
+            # Always run LLM analysis when fixing — catches \hline, overflow,
+            # formatting, and other issues the simple check misses.
+            if fix and session.llm_client:
+                from texguardian.cli.commands.tables import generate_and_apply_table_fixes
+
+                applied = await generate_and_apply_table_fixes(
+                    session, console, auto_approve=True, print_output=False,
+                )
+                result.patches_applied += applied
+            elif issues == 0:
                 console.print("    [green]✓[/green] All tables look good")
 
         except Exception as e:

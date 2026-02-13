@@ -5,6 +5,20 @@ All notable changes to TexGuardian will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.0] - 2025-02-13
+
+### Fixed
+
+- **Figure overflow detection** — `/figures fix`, `/review full`, and `generate_and_apply_figure_fixes()` now detect `width > \columnwidth` and `\hspace{-...}` overflow issues, not just missing labels/captions
+- **Review pipeline always runs LLM analysis** — Steps 4 (figures) and 5 (tables) no longer skip LLM fix when only overflow or `\hline` issues exist; the LLM always analyzes all elements when in fix mode
+- **Review pipeline table `\hline` detection** — `_step_tables()` now detects `\hline` usage (matching the standalone `/tables fix` command)
+- **Standalone fix commands always run visual verify** — `/figures fix` and `/tables fix` now run the compile→render→vision loop even when no structural issues are found, catching visual-only problems like overflow
+- **Final recompile after review** — `/review full` adds a final compile after Step 7 to guarantee the PDF in `build/` reflects all patches
+
+### Removed
+
+- **ICLR template files from demo folder** — `/venue` downloads templates live at runtime instead of bundling them
+
 ## [0.1.9] - 2025-02-13
 
 ### Added

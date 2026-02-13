@@ -5,6 +5,14 @@ All notable changes to TexGuardian will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.1] - 2025-02-13
+
+### Fixed
+
+- **`__version__` synced** — `__init__.py` was stuck at 0.1.0, now matches pyproject.toml
+- **README command aliases corrected** — `/tables` aliases fixed to `/tabs`, `/tab`; `/venue` to `/template`, `/conf`; `/feedback` has no aliases
+- **docs/INSTALL.md** — updated wheel filename references to current version
+
 ## [0.2.0] - 2025-02-13
 
 ### Fixed

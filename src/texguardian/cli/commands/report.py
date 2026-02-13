@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import re as _re
 from datetime import datetime
 from typing import TYPE_CHECKING
 

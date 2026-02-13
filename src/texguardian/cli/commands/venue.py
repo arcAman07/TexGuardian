@@ -158,7 +158,7 @@ class VenueCommand(Command):
         if len(parts) > 2:
             return None, ""
         venue = parts[0]
-        year = parts[1] if len(parts) == 2 else "2025"
+        year = parts[1] if len(parts) == 2 else "2026"
         # Normalize 2-digit year
         if re.match(r'^\d{2}$', year):
             year = "20" + year
@@ -850,7 +850,7 @@ class VenueCommand(Command):
     def get_completions(self, partial: str) -> list[str]:
         """Get venue completions."""
         venues = list(KNOWN_VENUES.keys())
-        years = ["2025", "2024", "2023"]
+        years = ["2026", "2025", "2024"]
 
         if " " in partial:
             # Already have venue, suggest years

@@ -94,14 +94,33 @@ class BedrockClient(LLMClient):
                 if old_profile:
                     os.environ["AWS_PROFILE"] = old_profile
         elif profile:
-            session = boto3.Session(profile_name=profile)
-            self._client = session.client(
-                "bedrock-runtime",
-                region_name=region,
-                config=bedrock_config,
-            )
+            try:
+                session = boto3.Session(profile_name=profile)
+                self._client = session.client(
+                    "bedrock-runtime",
+                    region_name=region,
+                    config=bedrock_config,
+                )
+            except Exception:
+                # Profile not found — fall back to default credential chain
+                # Temporarily unset AWS_PROFILE so boto3 doesn't re-read it
+                logger.warning(
+                    "AWS profile '%s' not found, falling back to default credentials",
+                    profile,
+                )
+                old_profile = os.environ.pop("AWS_PROFILE", None)
+                try:
+                    session = boto3.Session(region_name=region)
+                    self._client = session.client(
+                        "bedrock-runtime",
+                        region_name=region,
+                        config=bedrock_config,
+                    )
+                finally:
+                    if old_profile:
+                        os.environ["AWS_PROFILE"] = old_profile
         else:
-            session = boto3.Session()
+            session = boto3.Session(region_name=region)
             self._client = session.client(
                 "bedrock-runtime",
                 region_name=region,

@@ -1,72 +1,95 @@
 # Test Run — TexGuardian Demo
 
-This directory contains a LaTeX paper with **17 deliberate issues** for testing TexGuardian.
+This directory contains a realistic ML research paper (`demo_paper.tex`) with intentional formatting issues for demonstrating TexGuardian's capabilities.
 
 ## Quick Start
 
 ```bash
 cd demo/test_run
-texguardian init
-# Edit texguardian.yaml: change main_tex from "main.tex" to "demo_paper.tex"
 texguardian chat
 ```
 
-Then inside the REPL:
+## Known Issues in demo_paper.tex
 
+| Issue | Location | Description |
+|-------|----------|-------------|
+| Figure overflow | Line ~137 | `width=1.5\columnwidth` exceeds column width |
+| Wide table | Line ~51 | 10-column table overflows margins |
+| Wide table | Line ~171 | 9-column table overflows margins |
+| Duplicate `\usepackage{natbib}` | Lines 8,15 | natbib loaded twice |
+
+## Commands to Test (Screen Recording Guide)
+
+Run these commands inside `texguardian chat` to demonstrate all features:
+
+### Core Commands
 ```
-/verify              # See all 17 issues
-/figures fix         # Fix overflowing figures
-/tables fix          # Fix bad tables
-/citations fix       # Fix citation problems
-/feedback            # Get overall score
+/help                    # Show all available commands
+/compile                 # Compile the LaTeX document
+/compile --clean         # Clean build artifacts and recompile
+/verify                  # Run all verification checks
+/page_count              # Show page count and section breakdown
+/report                  # Generate comprehensive verification report
+/model                   # Show current LLM model
+/model list              # List available models
 ```
 
-## Deliberate Issues
+### Content Analysis & Fixing
+```
+/figures                 # Verify all figures
+/figures fix             # Auto-fix figure issues (overflow)
+/figures analyze         # Deep AI analysis of figures
+/tables                  # Verify all tables
+/tables fix              # Auto-fix table issues
+/tables analyze          # Deep AI analysis of tables
+/citations               # Verify citations
+/citations fix           # Auto-fix citation issues
+/suggest_refs            # AI-powered citation recommendations
+/section                 # List all sections
+/section Introduction    # Analyze Introduction section
+/section Introduction fix # Auto-fix Introduction issues
+/feedback                # Get comprehensive paper feedback with scores
+```
 
-### Overflowing Figures (3)
-| Line | Width | Issue |
-|------|-------|-------|
-| ~107 | `width=1.4\columnwidth` | 40% overflow |
-| ~125 | `width=1.8\textwidth` | Massive overflow |
-| ~160 | `width=2.0\columnwidth` | 2x overflow |
+### Submission Workflow
+```
+/venue                   # List supported conference venues
+/venue iclr 2026         # Download ICLR 2026 style files
+/camera_ready            # Convert to camera-ready format
+/anonymize               # Make paper anonymous for review
+```
 
-### Bad Tables (2)
-| Line | Issue |
-|------|-------|
-| ~140 | 9 columns, uses `\hline` instead of booktabs, too wide |
-| ~180 | Uses `\hline` instead of `\toprule/\midrule/\bottomrule` |
+### Visual Verification
+```
+/polish_visual           # Run visual verification loop with vision model
+```
 
-### Undefined Citations (4)
-| Key | Issue |
-|-----|-------|
-| `nonexistent_paper_2024` | Cited but not in .bib |
-| `hallucinated_reference_2023` | Cited but not in .bib |
-| `also_fake_citation_2025` | Cited but not in .bib |
-| `another_missing_ref` | Cited but not in .bib |
+### Full Pipeline
+```
+/review quick            # Run full review pipeline (without visual polish)
+/review full             # Run full review pipeline (with visual polish)
+```
 
-### Uncited References (3)
-| Key | Issue |
-|-----|-------|
-| `unused_reference_2024` | In .bib but never cited |
-| `another_unused_ref` | In .bib but never cited |
-| `stale_draft_reference` | In .bib but never cited |
+### File Operations
+```
+/read demo_paper.tex     # Display file with line numbers
+/grep citep              # Search for pattern in files
+/bash ls *.tex           # Run shell command
+```
 
-### Wrong Citation Style (2)
-| Line | Issue |
-|------|-------|
-| ~42 | `\cite{devlin2019bert}` should be `\citep{}` or `\citet{}` |
-| ~43 | `\cite{vaswani2017attention}` should be `\citep{}` or `\citet{}` |
+### Version Control
+```
+/diff                    # Show changes since last checkpoint
+/revert                  # List/revert to previous checkpoint
+```
 
-### TODO/FIXME/XXX Markers (5)
-| Line | Marker |
-|------|--------|
-| ~29 | `TODO: Rewrite this abstract` |
-| ~50 | `FIXME: Need to strengthen this motivation` |
-| ~96 | `XXX: Should we add a paragraph` |
-| ~133 | `TODO: Add the load balancing loss equation` |
-| ~196 | `TODO: Add qualitative examples` |
+## Files
 
-### Undefined Figure Reference (1)
-| Line | Issue |
-|------|-------|
-| ~72 | `\ref{fig:nonexistent_figure}` — label doesn't exist |
+| File | Description |
+|------|-------------|
+| `demo_paper.tex` | Main LaTeX paper (Sparse-MoE-Doc) |
+| `demo_refs.bib` | Bibliography with 11 references |
+| `texguardian.yaml` | TexGuardian configuration |
+| `paper_spec.md` | Paper specification (ICLR 2026, custom checks) |
+| `error_paper.pdf` | Pre-compiled PDF showing issues before fixes |
+| `demo_paper.pdf` | Latest compiled PDF |

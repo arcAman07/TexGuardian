@@ -36,7 +36,7 @@ embeddings, outperforming dense transformers by 14.3\% on DocQA while using
 
 \section{Introduction}
 
-Long-context document understanding remains challenging \citep{devlin2019bert}.
+Long-context document understanding remains challenging \cite{devlin2019bert}.
 Modern documents contain heterogeneous content that requires different strategies
 \citep{vaswani2017attention, brown2020language}. MoE architectures
 \citep{shazeer2017outrageously} offer conditional computation but existing
@@ -45,19 +45,19 @@ Our contributions: (1) structure-aware routing, (2) sub-quadratic attention
 scaling to 128K tokens, (3) evaluation on four benchmarks (Figure~\ref{fig:pipeline}).
 
 \begin{table}[H]
-    \caption{Comparison of document understanding approaches across key capabilities. Our method is the only one supporting all features while maintaining competitive parameter count and training cost. $\checkmark$ = supported, $\times$ = not supported.}
+    \caption{Comparison of document understanding approaches. $\checkmark$ = supported, $\times$ = not supported.}
     \label{tab:comparison}
     \centering
-    \begin{tabular}{lccccccccr}
+    \begin{tabular}{lcccccccccr}
         \toprule
-        Method & Long-Context & Sparse & Structure-Aware & Sub-Quadratic & Multi-Gran. & Load-Balanced & Cross-Doc & Params & Training Cost \\
+        Method & Long-Context & Sparse Routing & Structure-Aware & Sub-Quadratic & Multi-Granularity & Load-Balanced & Cross-Document & Parameters & Training Cost & Year \\
         \midrule
-        BERT-base & $\times$ & $\times$ & $\times$ & $\times$ & $\times$ & N/A & $\times$ & 110M & 16 TPU-days \\
-        Longformer & $\checkmark$ & $\times$ & $\times$ & $\checkmark$ & $\times$ & N/A & $\times$ & 149M & 24 TPU-days \\
-        Switch Trans. & $\times$ & $\checkmark$ & $\times$ & $\times$ & $\times$ & $\checkmark$ & $\times$ & 1.6B & 128 TPU-days \\
-        LayoutLMv2 & $\times$ & $\times$ & $\checkmark$ & $\times$ & $\checkmark$ & N/A & $\times$ & 426M & 64 TPU-days \\
+        BERT-base & $\times$ & $\times$ & $\times$ & $\times$ & $\times$ & N/A & $\times$ & 110M & 16 TPU-days & 2019 \\
+        Longformer & $\checkmark$ & $\times$ & $\times$ & $\checkmark$ & $\times$ & N/A & $\times$ & 149M & 24 TPU-days & 2020 \\
+        Switch Transformer & $\times$ & $\checkmark$ & $\times$ & $\times$ & $\times$ & $\checkmark$ & $\times$ & 1.6B & 128 TPU-days & 2022 \\
+        LayoutLMv2 & $\times$ & $\times$ & $\checkmark$ & $\times$ & $\checkmark$ & N/A & $\times$ & 426M & 64 TPU-days & 2021 \\
         \midrule
-        \textbf{Ours} & $\checkmark$ & $\checkmark$ & $\checkmark$ & $\checkmark$ & $\checkmark$ & $\checkmark$ & $\checkmark$ & 380M & 48 A100-days \\
+        \textbf{Ours} & $\checkmark$ & $\checkmark$ & $\checkmark$ & $\checkmark$ & $\checkmark$ & $\checkmark$ & $\checkmark$ & 380M & 48 A100-days & 2026 \\
         \bottomrule
     \end{tabular}
 \end{table}
@@ -134,8 +134,8 @@ $g(s_i) = \text{TopK}(\text{softmax}(W_r \cdot \text{pool}(s_i) + b_r), k)$.
     \noindent
     \begin{tikzpicture}
     \begin{axis}[
-        width=1.5\columnwidth,
-        height=6cm,
+        width=1.8\columnwidth,
+        height=7cm,
         ybar stacked,
         bar width=14pt,
         xlabel={Expert Index},
@@ -165,18 +165,18 @@ $g(s_i) = \text{TopK}(\text{softmax}(W_r \cdot \text{pool}(s_i) + b_r), k)$.
 Table~\ref{tab:comparison} summarizes the capabilities of different approaches, while Table~\ref{tab:main_results} presents our main quantitative results.
 
 \begin{table}[H]
-    \caption{Main results on document understanding benchmarks. Our model (top-2 routing) achieves state-of-the-art performance across all metrics while using only 1.2 TFLOPs, demonstrating the efficiency of structure-aware sparse routing. Best in \textbf{bold}, second best \underline{underlined}.}
+    \caption{Main results on document understanding benchmarks. Best in \textbf{bold}, second best \underline{underlined}.}
     \label{tab:main_results}
     \centering
-    \begin{tabular}{lcccccccc}
+    \begin{tabular}{lccccccccc}
         \toprule
-        Model & DocQA F1 (\%) & DocQA EM (\%) & NLI Acc (\%) & NLI F1 (\%) & ROUGE-1 & ROUGE-L & Struct EM (\%) & FLOPs (T) \\
+        Model & DocQA F1 (\%) & DocQA EM (\%) & NLI Accuracy (\%) & NLI F1 (\%) & ROUGE-1 & ROUGE-L & Structure EM (\%) & FLOPs (TFLOPs) & Inference (ms) \\
         \midrule
-        BERT-base & 62.3 & 54.1 & 71.8 & 70.2 & 32.1 & 28.4 & 41.2 & 0.8 \\
-        Longformer & 68.7 & 61.3 & 76.4 & 74.9 & 36.8 & 33.1 & 48.7 & 2.1 \\
-        Switch-base & 71.2 & 64.5 & 79.3 & 78.1 & 39.4 & 36.2 & 52.8 & 1.4 \\
-        Ours (top-1) & \underline{78.4} & \underline{72.1} & \underline{84.7} & \underline{83.2} & \underline{43.1} & \underline{40.3} & \underline{61.4} & \underline{0.9} \\
-        Ours (top-2) & \textbf{82.5} & \textbf{76.8} & \textbf{87.1} & \textbf{86.3} & \textbf{45.8} & \textbf{43.2} & \textbf{64.7} & 1.2 \\
+        BERT-base & 62.3 & 54.1 & 71.8 & 70.2 & 32.1 & 28.4 & 41.2 & 0.8 & 12.4 \\
+        Longformer & 68.7 & 61.3 & 76.4 & 74.9 & 36.8 & 33.1 & 48.7 & 2.1 & 31.7 \\
+        Switch-base & 71.2 & 64.5 & 79.3 & 78.1 & 39.4 & 36.2 & 52.8 & 1.4 & 18.9 \\
+        Ours (top-1) & \underline{78.4} & \underline{72.1} & \underline{84.7} & \underline{83.2} & \underline{43.1} & \underline{40.3} & \underline{61.4} & \underline{0.9} & \underline{14.2} \\
+        Ours (top-2) & \textbf{82.5} & \textbf{76.8} & \textbf{87.1} & \textbf{86.3} & \textbf{45.8} & \textbf{43.2} & \textbf{64.7} & 1.2 & 16.8 \\
         \bottomrule
     \end{tabular}
 \end{table}
@@ -185,19 +185,19 @@ Our approach outperforms all baselines. The ablation in Table~\ref{tab:ablation}
 confirms that structure-aware routing is the most critical component ($-8.2$ F1).
 
 \begin{table}[H]
-    \caption{Ablation study on DocQA.}
+    \caption{Ablation study on DocQA development set.}
     \label{tab:ablation}
     \centering
-    \begin{tabular}{lcc}
-        \toprule
+    \begin{tabular}{|l|c|c|}
+        \hline
         Configuration & F1 (\%) & $\Delta$ \\
-        \midrule
+        \hline
         Full model & 82.5 & — \\
         w/o structure routing & 74.3 & $-8.2$ \\
         w/o load balancing & 79.1 & $-3.4$ \\
         w/o local attention & 76.8 & $-5.7$ \\
         Uniform routing & 71.6 & $-10.9$ \\
-        \bottomrule
+        \hline
     \end{tabular}
 \end{table}
 

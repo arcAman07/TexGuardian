@@ -8,10 +8,9 @@ until the paper reaches the threshold score or max iterations:
 4. Validate + fix citations
 5. Analyze + fix figures
 6. Analyze + fix tables
-7. Visual verification of structural fixes
-8. Visual polish loop
-9. Loop back if score < threshold
-10. Final report
+7. Visual verification + polish (unified)
+8. Loop back if score < threshold
+9. Final report
 """
 
 from __future__ import annotations
@@ -125,7 +124,7 @@ class ReviewCommand(Command):
             console.print(Rule(f"[bold magenta]Round {result.review_rounds}/{MAX_REVIEW_ROUNDS}[/bold magenta]", style="magenta"))
             console.print()
 
-            n_steps = 8
+            n_steps = 7
 
             # Step 1: Compile
             console.print(f"[bold]Step 1/{n_steps}:[/bold] Compiling LaTeX")
@@ -178,25 +177,16 @@ class ReviewCommand(Command):
                 console.print("[bold]Recompiling[/bold] (patches applied)")
                 await self._step_compile(session, console, result)
 
-            # Step 7: Visual verification of structural fixes
+            # Step 7: Visual verification + polish (unified)
             console.print(Rule(style="dim"))
             console.print(f"[bold]Step 7/{n_steps}:[/bold] Visual Verification")
-            if patches_this_round > 0:
-                patches_before = result.patches_applied
-                await self._step_visual_verify_fixes(session, console, result, patches_this_round)
-                patches_this_round += result.patches_applied - patches_before
-            else:
-                console.print("  [dim]No patches to verify — skipping[/dim]")
-
-            # Step 8: Visual polish
-            # Always run on the first round in full mode — the visual verifier
-            # can find and fix layout issues (overflow, spacing) that structural
-            # checks miss.  On subsequent rounds, skip if no patches were applied.
-            console.print(Rule(style="dim"))
-            console.print(f"[bold]Step 8/{n_steps}:[/bold] Visual Polish")
             if mode == "full" and (result.review_rounds == 1 or patches_this_round > 0):
                 patches_before = result.patches_applied
-                await self._step_visual(session, console, result, custom_instruction=custom_instruction)
+                await self._step_visual_unified(
+                    session, console, result,
+                    patches_this_round=patches_this_round,
+                    custom_instruction=custom_instruction,
+                )
                 patches_this_round += result.patches_applied - patches_before
             elif mode == "full":
                 console.print("  [dim]No new patches this round — skipping[/dim]")
@@ -228,7 +218,7 @@ class ReviewCommand(Command):
                 console.print(f"\n[yellow]Score {result.overall_score}/100 < {SCORE_THRESHOLD}. Continuing...[/yellow]")
 
         # Final summary
-        self._print_summary(result, console)
+        self._print_summary(result, console, session=session)
 
     async def _step_compile(
         self,
@@ -255,6 +245,8 @@ class ReviewCommand(Command):
             if compile_result.success:
                 console.print("  [green]✓[/green] Compiled successfully")
                 console.print(f"  [dim]Pages: {result.page_count}[/dim]")
+                if compile_result.pdf_path:
+                    console.print(f"  [dim]PDF: {compile_result.pdf_path}[/dim]")
                 if compile_result.warnings:
                     console.print(f"  [yellow]Warnings: {len(compile_result.warnings)}[/yellow]")
                 return True
@@ -355,46 +347,21 @@ class ReviewCommand(Command):
         console: Console,
         result: ReviewResult,
     ) -> None:
-        """Step 2: Run verification checks."""
-        from texguardian.latex.parser import LatexParser
+        """Step 2: Run verification checks.
 
-        parser = LatexParser(session.project_root, session.config.project.main_tex)
-        issues = []
+        Delegates to the shared ``run_verify_checks()`` in verify.py so
+        that /review and /verify always use the same logic.
+        """
+        from texguardian.cli.commands.verify import run_verify_checks
 
-        # Page limit check
-        if session.last_compilation and session.last_compilation.page_count is not None:
-            page_count = session.last_compilation.page_count
-            max_pages = session.paper_spec.thresholds.max_pages if session.paper_spec else 9
-            if page_count > max_pages:
-                issues.append(f"Page limit exceeded: {page_count}/{max_pages}")
+        check_results = run_verify_checks(session)
 
-        # Citation check
-        try:
-            citations = parser.extract_citations()
-            bib_keys = parser.extract_bib_keys()
-            undefined = [c for c in citations if c not in bib_keys]
-            if undefined:
-                issues.append(f"Undefined citations: {len(undefined)}")
-        except Exception:
-            pass
-
-        # Figure check
-        try:
-            figures = parser.extract_figures()
-            fig_refs = parser.extract_figure_refs()
-            unreferenced = [f for f in figures if f not in fig_refs]
-            if unreferenced:
-                issues.append(f"Unreferenced figures: {len(unreferenced)}")
-        except Exception:
-            pass
-
-        # Custom checks
-        if session.paper_spec:
-            for check in session.paper_spec.checks:
-                if check.pattern:
-                    matches = parser.find_pattern(check.pattern)
-                    if matches:
-                        issues.append(f"{check.name}: {check.message}")
+        # Convert dict results into the issue-string format that
+        # _step_fix_verification_issues expects.
+        issues: list[str] = []
+        for chk in check_results:
+            if not chk["passed"]:
+                issues.append(f"{chk['name']}: {chk['message']}")
 
         result.verification_issues = issues
         result.verification_passed = len(issues) == 0
@@ -517,15 +484,23 @@ class ReviewCommand(Command):
             with console.status("  [dim]Checking against CrossRef & Semantic Scholar...", spinner="dots"):
                 validation_results = await validator.validate_bib_file(bib_files[0], console=console)
 
-            result.citations_valid = sum(1 for r in validation_results if r.status == "valid")
-            result.citations_hallucinated = sum(1 for r in validation_results if r.status == "likely_hallucinated")
+            n_valid = sum(1 for r in validation_results if r.status == "valid")
+            n_needs_correction = sum(1 for r in validation_results if r.status == "needs_correction")
+            n_not_found = sum(1 for r in validation_results if r.status == "not_found")
+            n_hallucinated = sum(1 for r in validation_results if r.status == "likely_hallucinated")
+
+            result.citations_valid = n_valid
+            result.citations_hallucinated = n_hallucinated
 
             total = len(validation_results)
             console.print(f"  Validated {total} citations:")
-            console.print(f"    [green]✓[/green] Valid: {result.citations_valid}")
-
-            if result.citations_hallucinated > 0:
-                console.print(f"    [red]✗[/red] Likely hallucinated: {result.citations_hallucinated}")
+            console.print(f"    [green]✓[/green] Valid: {n_valid}")
+            if n_needs_correction > 0:
+                console.print(f"    [yellow]~[/yellow] Needs correction: {n_needs_correction} (metadata mismatch)")
+            if n_not_found > 0:
+                console.print(f"    [dim]?[/dim] Could not verify: {n_not_found} (not in database)")
+            if n_hallucinated > 0:
+                console.print(f"    [red]✗[/red] Likely hallucinated: {n_hallucinated}")
 
                 if fix and session.llm_client:
                     console.print("  [cyan]Generating citation fixes...[/cyan]")
@@ -650,33 +625,44 @@ class ReviewCommand(Command):
         except Exception as e:
             console.print(f"  [red]Error analyzing tables: {e}[/red]")
 
-    async def _step_visual_verify_fixes(
+    async def _step_visual_unified(
         self,
         session: SessionState,
         console: Console,
         result: ReviewResult,
         patches_this_round: int = 0,
+        custom_instruction: str = "",
     ) -> None:
-        """Step 6: Visual verification of structural fixes."""
-        if patches_this_round == 0:
-            console.print("  [dim]No patches were applied this round — skipping visual verification[/dim]")
-            return
+        """Step 7: Visual verification + polish (unified).
 
+        Uses a single VisualVerifier instance.  Focus areas come from
+        structural patches (if any) combined with the user's custom
+        instruction.
+        """
         from texguardian.visual.verifier import VisualVerifier
 
         try:
             verifier = VisualVerifier(session)
-            max_rounds = min(3, session.config.safety.max_visual_rounds)
+            max_rounds = session.config.safety.max_visual_rounds
+
+            # Build focus areas: structural patch areas + custom instruction
+            focus_areas: list[str] = []
+            if patches_this_round > 0:
+                focus_areas.extend(["figures", "tables", "captions", "labels"])
+            if custom_instruction:
+                focus_areas.append(custom_instruction)
 
             visual_result = await verifier.run_loop(
                 max_rounds=max_rounds,
                 console=console,
-                focus_areas=["figures", "tables", "captions", "labels"],
+                focus_areas=focus_areas or None,
             )
 
+            result.visual_score = visual_result.quality_score
+            result.visual_rounds = visual_result.rounds
             result.patches_applied += visual_result.patches_applied
 
-            console.print("  Visual verification of fixes complete:")
+            console.print("  Visual verification complete:")
             console.print(f"    Rounds: {visual_result.rounds}")
             console.print(f"    Score: {visual_result.quality_score}/100")
             console.print(f"    Patches: {visual_result.patches_applied}")
@@ -686,57 +672,75 @@ class ReviewCommand(Command):
         except Exception as e:
             console.print(f"  [red]Error in visual verification: {e}[/red]")
 
-    async def _step_visual(
-        self,
-        session: SessionState,
-        console: Console,
-        result: ReviewResult,
-        custom_instruction: str = "",
-    ) -> None:
-        """Step 6: Visual polish loop."""
-        from texguardian.visual.verifier import VisualVerifier
-
-        try:
-            verifier = VisualVerifier(session)
-            max_rounds = session.config.safety.max_visual_rounds
-
-            visual_result = await verifier.run_loop(
-                max_rounds=max_rounds,
-                console=console,
-                focus_areas=[custom_instruction] if custom_instruction else None,
-            )
-
-            result.visual_score = visual_result.quality_score
-            result.visual_rounds = visual_result.rounds
-            result.patches_applied += visual_result.patches_applied
-
-            console.print("  Visual polish complete:")
-            console.print(f"    Rounds: {result.visual_rounds}")
-            console.print(f"    Score: {result.visual_score}/100")
-            console.print(f"    Patches: {visual_result.patches_applied}")
-
-        except Exception as e:
-            console.print(f"  [red]Error in visual polish: {e}[/red]")
-
     async def _step_feedback(
         self,
         session: SessionState,
         console: Console,
         result: ReviewResult,
     ) -> None:
-        """Step 7: Generate overall feedback."""
-        if not session.llm_client:
-            console.print("  [dim]LLM not available for feedback[/dim]")
-            return
+        """Calculate overall score using *fresh* verification data.
 
-        # Calculate overall score based on results
+        Re-runs verification checks after all patches have been applied so
+        the score reflects the current document state rather than the stale
+        pre-fix counts captured in Step 2.
+
+        Graduated penalties:
+          - errors   → -7 each (max 3)
+          - warnings → -3 each (max 3)
+
+        Visual blend: 80/20, only when visual score < structural score.
+        """
+        # --- Fresh verification counts ----------------------------------
+        from texguardian.cli.commands.verify import run_verify_checks
+        from texguardian.latex.parser import LatexParser
+
+        fresh = run_verify_checks(session)
+
+        errors = [c for c in fresh if not c["passed"] and c["severity"] == "error"]
+        warnings = [c for c in fresh if not c["passed"] and c["severity"] == "warning"]
+
+        result.verification_issues = [
+            f"{c['name']}: {c['message']}" for c in fresh if not c["passed"]
+        ]
+        result.verification_passed = len(result.verification_issues) == 0
+
+        # Re-count figure / table issues from fresh parser data
+        parser = LatexParser(session.project_root, session.config.project.main_tex)
+        try:
+            figures = parser.extract_figures_with_details()
+            result.figures_analyzed = len(figures)
+            fig_issues = sum(
+                1 for f in figures if not f.get("label") or not f.get("caption") or len(f.get("caption", "")) < 20
+            )
+            result.figures_issues = fig_issues
+        except Exception:
+            pass
+        try:
+            tables = parser.extract_tables_with_details()
+            result.tables_analyzed = len(tables)
+            tbl_issues = 0
+            for tab in tables:
+                if not tab.get("label"):
+                    tbl_issues += 1
+                if not tab.get("caption") or len(tab.get("caption", "")) < 10:
+                    tbl_issues += 1
+                content = tab.get("content", "")
+                if "\\hline" in content and "\\toprule" not in content:
+                    tbl_issues += 1
+            result.tables_issues = tbl_issues
+        except Exception:
+            pass
+
+        # --- Score calculation ------------------------------------------
         score = 100
 
-        # Deduct for issues
         if not result.compile_success:
             score -= 30
-        if not result.verification_passed:
-            score -= 10 * min(len(result.verification_issues), 3)
+
+        # Graduated penalties: errors -7, warnings -3
+        score -= 7 * min(len(errors), 3)
+        score -= 3 * min(len(warnings), 3)
+
         if result.citations_hallucinated > 0:
             score -= 5 * min(result.citations_hallucinated, 4)
         if result.figures_issues > 0:
@@ -744,16 +748,21 @@ class ReviewCommand(Command):
         if result.tables_issues > 0:
             score -= 2 * min(result.tables_issues, 5)
 
-        # Blend visual score only when visual polish actually ran
+        # Blend visual score (80/20) only when visual < structural
         if result.visual_rounds > 0 and result.visual_score > 0:
-            # Weighted blend: 70% issue-based score, 30% visual score
-            score = round((score * 7 + result.visual_score * 3) / 10)
+            if result.visual_score < score:
+                score = round((score * 8 + result.visual_score * 2) / 10)
 
         result.overall_score = max(0, min(100, score))
 
         console.print(f"  [bold]Overall Score: {result.overall_score}/100[/bold]")
 
-    def _print_summary(self, result: ReviewResult, console: Console) -> None:
+    def _print_summary(
+        self,
+        result: ReviewResult,
+        console: Console,
+        session: SessionState | None = None,
+    ) -> None:
         """Print final review summary."""
         console.print("\n")
 
@@ -847,6 +856,11 @@ class ReviewCommand(Command):
 
             for i, step in enumerate(steps[:5], 1):
                 console.print(f"  {i}. {step}")
+
+        # Show output PDF path
+        pdf_path = session.last_pdf_path if session else None
+        if pdf_path:
+            console.print(f"\n[bold]Output PDF:[/bold] {pdf_path}")
 
     def get_completions(self, partial: str) -> list[str]:
         """Get argument completions."""

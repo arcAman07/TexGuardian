@@ -392,8 +392,8 @@ async def test_generate_table_fixes_visual_verify(session, console):
 
 
 @pytest.mark.asyncio
-async def test_review_has_eight_steps(session, console):
-    """Review pipeline should show 8 steps in output."""
+async def test_review_has_seven_steps(session, console):
+    """Review pipeline should show 7 steps in output."""
     from texguardian.cli.commands.review import ReviewCommand
 
     cmd = ReviewCommand()
@@ -411,8 +411,7 @@ async def test_review_has_eight_steps(session, console):
     cmd._step_citations = AsyncMock()
     cmd._step_figures = AsyncMock()
     cmd._step_tables = AsyncMock()
-    cmd._step_visual_verify_fixes = AsyncMock()
-    cmd._step_visual = AsyncMock()
+    cmd._step_visual_unified = AsyncMock()
 
     # Make feedback set score >= threshold to stop after 1 round
     async def fake_feedback(_session, _console, result):
@@ -423,19 +422,18 @@ async def test_review_has_eight_steps(session, console):
     await cmd.execute(session, "full", console)
 
     output = _strip_ansi(console.file.getvalue())
-    assert "Step 1/8" in output
-    assert "Step 2/8" in output
-    assert "Step 3/8" in output
-    assert "Step 4/8" in output
-    assert "Step 5/8" in output
-    assert "Step 6/8" in output
-    assert "Step 7/8" in output
-    assert "Step 8/8" in output
+    assert "Step 1/7" in output
+    assert "Step 2/7" in output
+    assert "Step 3/7" in output
+    assert "Step 4/7" in output
+    assert "Step 5/7" in output
+    assert "Step 6/7" in output
+    assert "Step 7/7" in output
 
 
 @pytest.mark.asyncio
-async def test_review_step7_visual_verify_called(session, console):
-    """Step 7 should call _step_visual_verify_fixes when patches were applied."""
+async def test_review_step7_visual_unified_called(session, console):
+    """Step 7 should call _step_visual_unified when patches were applied."""
     from texguardian.cli.commands.review import ReviewCommand
 
     cmd = ReviewCommand()
@@ -451,8 +449,7 @@ async def test_review_step7_visual_verify_called(session, console):
     cmd._step_citations = AsyncMock()
     cmd._step_figures = AsyncMock()
     cmd._step_tables = AsyncMock()
-    cmd._step_visual_verify_fixes = AsyncMock()
-    cmd._step_visual = AsyncMock()
+    cmd._step_visual_unified = AsyncMock()
 
     async def fake_feedback(_session, _console, result):
         result.overall_score = 95
@@ -461,12 +458,12 @@ async def test_review_step7_visual_verify_called(session, console):
 
     await cmd.execute(session, "full", console)
 
-    cmd._step_visual_verify_fixes.assert_called_once()
+    cmd._step_visual_unified.assert_called_once()
 
 
 @pytest.mark.asyncio
-async def test_review_quick_skips_visual_polish(session, console):
-    """Quick mode should skip Step 8 (visual polish) but still run Step 7."""
+async def test_review_quick_skips_visual(session, console):
+    """Quick mode should skip Step 7 (visual unified)."""
     from texguardian.cli.commands.review import ReviewCommand
 
     cmd = ReviewCommand()
@@ -474,7 +471,7 @@ async def test_review_quick_skips_visual_polish(session, console):
     cmd._step_compile = AsyncMock(return_value=True)
     cmd._step_verify = AsyncMock()
 
-    # Simulate a patch being applied so Step 7 (visual verify) triggers
+    # Simulate a patch being applied
     async def fake_fix_verify(_session, _console, result):
         result.patches_applied += 1
 
@@ -482,8 +479,7 @@ async def test_review_quick_skips_visual_polish(session, console):
     cmd._step_citations = AsyncMock()
     cmd._step_figures = AsyncMock()
     cmd._step_tables = AsyncMock()
-    cmd._step_visual_verify_fixes = AsyncMock()
-    cmd._step_visual = AsyncMock()
+    cmd._step_visual_unified = AsyncMock()
 
     async def fake_feedback(_session, _console, result):
         result.overall_score = 95
@@ -492,39 +488,20 @@ async def test_review_quick_skips_visual_polish(session, console):
 
     await cmd.execute(session, "quick", console)
 
-    # Step 7 (visual verify) should still run when patches were applied
-    cmd._step_visual_verify_fixes.assert_called_once()
-    # Step 8 (visual polish) should be skipped in quick mode
-    cmd._step_visual.assert_not_called()
+    # Visual unified should be skipped in quick mode
+    cmd._step_visual_unified.assert_not_called()
     output = console.file.getvalue()
     assert "Skipped" in output
 
 
 # ---------------------------------------------------------------------------
-# Test: _step_visual_verify_fixes behavior
+# Test: _step_visual_unified behavior
 # ---------------------------------------------------------------------------
 
 
 @pytest.mark.asyncio
-async def test_step_visual_verify_skips_if_no_patches(session, console):
-    """Step 6 should skip if no patches were applied in earlier steps."""
-    from texguardian.cli.commands.review import ReviewCommand, ReviewResult
-
-    cmd = ReviewCommand()
-    result = ReviewResult()
-    result.patches_applied = 0
-
-    with patch(VERIFIER_PATCH) as mock_verifier_cls:
-        await cmd._step_visual_verify_fixes(session, console, result)
-        mock_verifier_cls.assert_not_called()
-
-    output = console.file.getvalue()
-    assert "skipping" in output.lower()
-
-
-@pytest.mark.asyncio
-async def test_step_visual_verify_runs_if_patches_applied(session, console):
-    """Step 6 should run VisualVerifier if patches were applied."""
+async def test_step_visual_unified_runs_with_patches(session, console):
+    """Unified visual step should run VisualVerifier and include patch focus areas."""
     from texguardian.cli.commands.review import ReviewCommand, ReviewResult
 
     cmd = ReviewCommand()
@@ -538,12 +515,11 @@ async def test_step_visual_verify_runs_if_patches_applied(session, console):
         mock_instance.run_loop.return_value = mock_vresult
         mock_verifier_cls.return_value = mock_instance
 
-        await cmd._step_visual_verify_fixes(session, console, result, patches_this_round=3)
+        await cmd._step_visual_unified(session, console, result, patches_this_round=3)
 
         mock_instance.run_loop.assert_called_once()
         call_kwargs = mock_instance.run_loop.call_args.kwargs
-        # max_rounds should be min(3, max_visual_rounds)
-        assert call_kwargs["max_rounds"] == min(3, session.config.safety.max_visual_rounds)
+        assert call_kwargs["max_rounds"] == session.config.safety.max_visual_rounds
         assert "figures" in call_kwargs["focus_areas"]
         assert "tables" in call_kwargs["focus_areas"]
 
@@ -552,8 +528,32 @@ async def test_step_visual_verify_runs_if_patches_applied(session, console):
 
 
 @pytest.mark.asyncio
-async def test_step_visual_verify_handles_error(session, console):
-    """Step 6 should handle errors gracefully."""
+async def test_step_visual_unified_runs_without_patches(session, console):
+    """Unified visual step should run even with no patches (no structural focus areas)."""
+    from texguardian.cli.commands.review import ReviewCommand, ReviewResult
+
+    cmd = ReviewCommand()
+    result = ReviewResult()
+    result.patches_applied = 0
+
+    mock_vresult = _mock_visual_result(rounds=1, quality_score=90, patches_applied=0)
+
+    with patch(VERIFIER_PATCH) as mock_verifier_cls:
+        mock_instance = AsyncMock()
+        mock_instance.run_loop.return_value = mock_vresult
+        mock_verifier_cls.return_value = mock_instance
+
+        await cmd._step_visual_unified(session, console, result, patches_this_round=0)
+
+        mock_instance.run_loop.assert_called_once()
+        call_kwargs = mock_instance.run_loop.call_args.kwargs
+        # No patches means no structural focus areas, so focus_areas should be None
+        assert call_kwargs["focus_areas"] is None
+
+
+@pytest.mark.asyncio
+async def test_step_visual_unified_handles_error(session, console):
+    """Unified visual step should handle errors gracefully."""
     from texguardian.cli.commands.review import ReviewCommand, ReviewResult
 
     cmd = ReviewCommand()
@@ -566,7 +566,7 @@ async def test_step_visual_verify_handles_error(session, console):
         mock_verifier_cls.return_value = mock_instance
 
         # Should not raise
-        await cmd._step_visual_verify_fixes(session, console, result, patches_this_round=2)
+        await cmd._step_visual_unified(session, console, result, patches_this_round=2)
 
     output = console.file.getvalue()
     assert "Error in visual verification" in output
@@ -616,8 +616,8 @@ async def test_table_focus_areas(session, console):
 
 
 @pytest.mark.asyncio
-async def test_review_step6_focus_areas(session, console):
-    """Review Step 6 should use combined figure+table focus areas."""
+async def test_review_visual_unified_focus_areas(session, console):
+    """Review unified visual step should use combined focus areas when patches applied."""
     from texguardian.cli.commands.review import ReviewCommand, ReviewResult
 
     cmd = ReviewCommand()
@@ -629,7 +629,7 @@ async def test_review_step6_focus_areas(session, console):
         mock_instance.run_loop.return_value = _mock_visual_result()
         mock_verifier_cls.return_value = mock_instance
 
-        await cmd._step_visual_verify_fixes(session, console, result, patches_this_round=1)
+        await cmd._step_visual_unified(session, console, result, patches_this_round=1)
 
         focus = mock_instance.run_loop.call_args.kwargs["focus_areas"]
         assert set(focus) == {"figures", "tables", "captions", "labels"}
@@ -867,8 +867,8 @@ async def test_generate_citation_fixes_visual_verify(citation_session, console):
 @pytest.mark.asyncio
 async def test_generate_citation_fixes_no_issues_returns_zero(citation_session, console):
     """When no issues exist, function should return 0 without calling LLM."""
-    from texguardian.cli.commands.citations import generate_and_apply_citation_fixes
     from texguardian.citations.validator import BibEntry, ValidationResult
+    from texguardian.cli.commands.citations import generate_and_apply_citation_fixes
 
     # All citations valid
     all_valid = [

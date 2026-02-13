@@ -1,112 +1,62 @@
 # Test Run — TexGuardian Demo
 
-This directory contains a realistic ML research paper (`demo_paper.tex`) with intentional formatting issues for demonstrating TexGuardian's capabilities.
+Live demo of TexGuardian's review pipeline. Start with a broken paper, run the
+tool, and compare the fixed output against `error_paper.pdf`.
 
-## Quick Start
+## Files
+
+| File | Description |
+|------|-------------|
+| `demo_paper.tex` | LaTeX paper with 6 intentional formatting issues |
+| `demo_refs.bib` | Bibliography (11 references) |
+| `error_paper.pdf` | Pre-compiled snapshot showing all issues (the "before") |
+| `paper_spec.md` | Paper specification (ICLR 2026, custom checks) |
+| `texguardian.yaml` | TexGuardian configuration |
+| `build/` | Output directory (fixed PDF appears here after review) |
+
+## Intentional Issues in demo_paper.tex
+
+| # | Issue | What You See |
+|---|-------|-------------|
+| 1 | Table 1 overflows (11 columns) | Last 4 columns cut off at right margin |
+| 2 | Figure 2 overflows (`width=1.8\columnwidth`) | Bar chart extends past page edge |
+| 3 | Table 2 overflows (10 columns) | Last 3 columns cut off at right margin |
+| 4 | Table 3 uses `\hline` with `\|` separators | Ugly borders instead of booktabs rules |
+| 5 | Bare `\cite{devlin2019bert}` | Should be `\citep{}` or `\citet{}` |
+| 6 | Duplicate `\usepackage{natbib}` | Lines 8 and 15 |
+
+## Running the Demo
 
 ```bash
 cd demo/test_run
 texguardian chat
 ```
 
-## Known Issues in demo_paper.tex
+Inside the chat session:
 
-| Issue | Location | Description |
-|-------|----------|-------------|
-| Figure overflow | Line ~137 | `width=1.5\columnwidth` exceeds column width |
-| Wide table | Line ~51 | 10-column table overflows margins |
-| Wide table | Line ~171 | 9-column table overflows margins |
-| Duplicate `\usepackage{natbib}` | Lines 8,15 | natbib loaded twice |
-
-## Screen Recording Commands
-
-Run these commands inside `texguardian chat` to demo all features.
-Each section is designed to flow naturally for a screen recording.
-
-### 1. Orientation (Non-LLM)
 ```
-/help
 /compile --clean
-/page_count
 /verify
-/report
-```
-
-### 2. Deep Analysis (LLM)
-```
-/feedback
-/section
-/section Introduction
-```
-
-### 3. Citations
-```
-/citations
-/citations fix
-/suggest_refs
-```
-
-### 4. Figures
-```
-/figures
-/figures fix
-/figures analyze
-```
-
-### 5. Tables
-```
-/tables
-/tables fix
-/tables analyze
-```
-
-### 6. Section Editing
-```
-/section Introduction fix
-/section Method
-```
-
-### 7. Submission Workflow
-```
 /venue
-/venue list
-/anonymize
-/camera_ready
+/review full
 ```
 
-### 8. Visual Polish
-```
-/compile
-/polish_visual
-```
+1. `/compile --clean` — compile and see the broken PDF
+2. `/verify` — lists all 6 issues found in the paper
+3. `/venue` — select ICLR 2026 template and venue settings
+4. `/review full` — runs the full 7-step fix pipeline until score >= 90
 
-### 9. Full Pipeline
-```
-/review quick
-```
+After `/review full` completes, the fixed PDF is at `build/demo_paper.pdf`.
+Compare it side-by-side with `error_paper.pdf` to see all issues resolved.
 
-### 10. Utilities
-```
-/model
-/model list
-/read demo_paper.tex
-/grep citep
-/bash ls *.tex
-/diff
-/revert
-/watch on
-/watch off
-```
+## Pipeline Steps (7-step review)
 
-## Files
+`/review full` loops until score reaches 90+:
 
-| File | Description |
-|------|-------------|
-| `demo_paper.tex` | Main LaTeX paper (Sparse-MoE-Doc) with intentional issues |
-| `demo_refs.bib` | Bibliography with 11 references |
-| `texguardian.yaml` | TexGuardian configuration |
-| `paper_spec.md` | Paper specification (ICLR 2026, custom checks) |
-| `error_paper.pdf` | Pre-compiled PDF showing issues before fixes |
-| `demo_paper.pdf` | Latest compiled PDF |
-| `iclr2026_conference.sty` | ICLR 2026 style file |
-| `iclr2026_conference.bst` | ICLR 2026 bibliography style |
+1. **Compile** — Build PDF with latexmk
+2. **Verify** — Run all checks (page limit, citations, figures, custom rules)
+3. **Fix Issues** — LLM generates patches for verification failures
+4. **Citations** — Validate against CrossRef / Semantic Scholar
+5. **Figures** — Detect overflow, missing labels/captions
+6. **Tables** — Detect `\hline`, overflow, formatting issues
+7. **Visual Polish** — Vision model inspects rendered PDF, patches layout

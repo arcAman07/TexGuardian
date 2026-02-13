@@ -6,6 +6,7 @@ Tests the visual verification loop integration in:
 - /review       (Step 6: visual verification of fixes, 7-step pipeline)
 - generate_and_apply_figure_fixes(visual_verify=True)
 - generate_and_apply_table_fixes(visual_verify=True)
+- generate_and_apply_citation_fixes(visual_verify=True)
 """
 
 import re
@@ -517,7 +518,7 @@ async def test_step_visual_verify_runs_if_patches_applied(session, console):
         mock_instance.run_loop.return_value = mock_vresult
         mock_verifier_cls.return_value = mock_instance
 
-        await cmd._step_visual_verify_fixes(session, console, result)
+        await cmd._step_visual_verify_fixes(session, console, result, patches_this_round=3)
 
         mock_instance.run_loop.assert_called_once()
         call_kwargs = mock_instance.run_loop.call_args.kwargs
@@ -545,7 +546,7 @@ async def test_step_visual_verify_handles_error(session, console):
         mock_verifier_cls.return_value = mock_instance
 
         # Should not raise
-        await cmd._step_visual_verify_fixes(session, console, result)
+        await cmd._step_visual_verify_fixes(session, console, result, patches_this_round=2)
 
     output = console.file.getvalue()
     assert "Error in visual verification" in output
@@ -608,7 +609,274 @@ async def test_review_step6_focus_areas(session, console):
         mock_instance.run_loop.return_value = _mock_visual_result()
         mock_verifier_cls.return_value = mock_instance
 
-        await cmd._step_visual_verify_fixes(session, console, result)
+        await cmd._step_visual_verify_fixes(session, console, result, patches_this_round=1)
 
         focus = mock_instance.run_loop.call_args.kwargs["focus_areas"]
         assert set(focus) == {"figures", "tables", "captions", "labels"}
+
+
+# ---------------------------------------------------------------------------
+# Fixtures for citation tests
+# ---------------------------------------------------------------------------
+
+MINIMAL_BIB = r"""@article{smith2024real,
+  title = {A Real Paper That Exists},
+  author = {Smith, John},
+  year = {2024},
+  journal = {Nature},
+}
+
+@article{fake2024hallucinated,
+  title = {A Completely Fabricated Paper Title That Does Not Exist},
+  author = {Fakerson, Fakey},
+  year = {2024},
+  journal = {Journal of Nonexistent Research},
+}
+"""
+
+MINIMAL_TEX_WITH_CITATIONS = r"""\documentclass{article}
+\usepackage{natbib}
+\begin{document}
+
+This result was shown by \cite{smith2024real} and also \cite{fake2024hallucinated}.
+
+\bibliographystyle{plainnat}
+\bibliography{refs}
+
+\end{document}
+"""
+
+
+@pytest.fixture
+def citation_session(tmp_path):
+    """Session with a .bib file and citations in the tex."""
+    tex_file = tmp_path / "main.tex"
+    tex_file.write_text(MINIMAL_TEX_WITH_CITATIONS)
+    bib_file = tmp_path / "refs.bib"
+    bib_file.write_text(MINIMAL_BIB)
+    guardian_dir = tmp_path / ".texguardian"
+    guardian_dir.mkdir()
+
+    config = TexGuardianConfig(
+        project=ProjectConfig(main_tex="main.tex", output_dir="build"),
+    )
+    sess = SessionState(
+        config=config,
+        project_root=tmp_path,
+        config_path=tmp_path / "texguardian.yaml",
+    )
+    sess.llm_client = _mock_llm_client()
+    return sess
+
+
+# ---------------------------------------------------------------------------
+# Test: generate_and_apply_citation_fixes
+# ---------------------------------------------------------------------------
+
+
+def _mock_validation_results():
+    """Create mock validation results with one hallucinated citation."""
+    from texguardian.citations.validator import BibEntry, ValidationResult
+
+    valid = ValidationResult(
+        key="smith2024real",
+        status="valid",
+        confidence=1.0,
+        original=BibEntry(
+            key="smith2024real",
+            entry_type="article",
+            title="A Real Paper That Exists",
+            author="Smith, John",
+            year="2024",
+        ),
+        message="Found in CrossRef",
+    )
+    hallucinated = ValidationResult(
+        key="fake2024hallucinated",
+        status="likely_hallucinated",
+        confidence=0.8,
+        original=BibEntry(
+            key="fake2024hallucinated",
+            entry_type="article",
+            title="A Completely Fabricated Paper Title That Does Not Exist",
+            author="Fakerson, Fakey",
+            year="2024",
+        ),
+        message="No matching papers found",
+        search_results=[{
+            "title": "An Actual Similar Paper",
+            "doi": "10.1234/similar",
+            "authors": "Real, Author",
+            "year": "2023",
+            "source": "crossref",
+        }],
+    )
+    return [valid, hallucinated]
+
+
+@pytest.mark.asyncio
+async def test_generate_citation_fixes_applies_patches(citation_session, console):
+    """generate_and_apply_citation_fixes should apply patches for hallucinated cites."""
+    from texguardian.cli.commands.citations import generate_and_apply_citation_fixes
+
+    mock_patch_response = (
+        "```diff\n"
+        "--- a/refs.bib\n"
+        "+++ b/refs.bib\n"
+        "@@ -6,5 +6,5 @@\n"
+        "-@article{fake2024hallucinated,\n"
+        "-  title = {A Completely Fabricated Paper Title That Does Not Exist},\n"
+        "-  author = {Fakerson, Fakey},\n"
+        "+@article{fake2024hallucinated,\n"
+        "+  title = {An Actual Similar Paper},\n"
+        "+  author = {Real, Author},\n"
+        "```"
+    )
+
+    async def fake_stream(*args, **kwargs):
+        return mock_patch_response
+
+    validation_results = _mock_validation_results()
+
+    with (
+        patch("texguardian.llm.streaming.stream_llm", side_effect=fake_stream),
+        patch("texguardian.cli.approval.interactive_approval", new_callable=AsyncMock, return_value=1),
+    ):
+        applied = await generate_and_apply_citation_fixes(
+            citation_session, console,
+            auto_approve=True,
+            validation_results=validation_results,
+        )
+
+        assert applied == 1
+
+
+@pytest.mark.asyncio
+async def test_generate_citation_fixes_skips_validation_when_results_passed(citation_session, console):
+    """When validation_results is passed, no API calls should be made."""
+    from texguardian.cli.commands.citations import generate_and_apply_citation_fixes
+
+    async def fake_stream(*args, **kwargs):
+        return "No patches needed."
+
+    validation_results = _mock_validation_results()
+
+    with (
+        patch("texguardian.llm.streaming.stream_llm", side_effect=fake_stream),
+        patch("texguardian.cli.approval.interactive_approval", new_callable=AsyncMock, return_value=0),
+        patch("texguardian.citations.validator.CitationValidator.validate_bib_file") as mock_validate,
+    ):
+        await generate_and_apply_citation_fixes(
+            citation_session, console,
+            auto_approve=True,
+            validation_results=validation_results,
+        )
+
+        # Validator should NOT have been called since we passed results
+        mock_validate.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_generate_citation_fixes_calls_validator_when_no_results(citation_session, console):
+    """When validation_results is None, the validator should be called."""
+    from texguardian.cli.commands.citations import generate_and_apply_citation_fixes
+
+    mock_results = _mock_validation_results()
+
+    async def fake_stream(*args, **kwargs):
+        return "No patches."
+
+    with (
+        patch("texguardian.llm.streaming.stream_llm", side_effect=fake_stream),
+        patch("texguardian.cli.approval.interactive_approval", new_callable=AsyncMock, return_value=0),
+        patch(
+            "texguardian.citations.validator.CitationValidator.validate_bib_file",
+            new_callable=AsyncMock,
+            return_value=mock_results,
+        ) as mock_validate,
+    ):
+        await generate_and_apply_citation_fixes(
+            citation_session, console, auto_approve=True,
+        )
+
+        mock_validate.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_generate_citation_fixes_visual_verify(citation_session, console):
+    """visual_verify=True should trigger VisualVerifier after patches applied."""
+    from texguardian.cli.commands.citations import generate_and_apply_citation_fixes
+
+    mock_patch_response = (
+        "```diff\n"
+        "--- a/refs.bib\n"
+        "+++ b/refs.bib\n"
+        "@@ -6,3 +6,3 @@\n"
+        "-  title = {Fake},\n"
+        "+  title = {Real},\n"
+        "```"
+    )
+
+    async def fake_stream(*args, **kwargs):
+        return mock_patch_response
+
+    validation_results = _mock_validation_results()
+
+    with (
+        patch("texguardian.llm.streaming.stream_llm", side_effect=fake_stream),
+        patch("texguardian.cli.approval.interactive_approval", new_callable=AsyncMock, return_value=1),
+        patch(VERIFIER_PATCH) as mock_verifier_cls,
+    ):
+        mock_instance = AsyncMock()
+        mock_instance.run_loop.return_value = _mock_visual_result(patches_applied=1)
+        mock_verifier_cls.return_value = mock_instance
+
+        applied = await generate_and_apply_citation_fixes(
+            citation_session, console,
+            auto_approve=True,
+            visual_verify=True,
+            validation_results=validation_results,
+        )
+
+        # 1 structural + 1 visual
+        assert applied == 2
+        mock_instance.run_loop.assert_called_once()
+        assert "citations" in mock_instance.run_loop.call_args.kwargs["focus_areas"]
+
+
+@pytest.mark.asyncio
+async def test_generate_citation_fixes_no_issues_returns_zero(citation_session, console):
+    """When no issues exist, function should return 0 without calling LLM."""
+    from texguardian.cli.commands.citations import generate_and_apply_citation_fixes
+    from texguardian.citations.validator import BibEntry, ValidationResult
+
+    # All citations valid
+    all_valid = [
+        ValidationResult(
+            key="smith2024real",
+            status="valid",
+            confidence=1.0,
+            original=BibEntry(key="smith2024real", entry_type="article", title="A Real Paper"),
+        ),
+        ValidationResult(
+            key="fake2024hallucinated",
+            status="valid",
+            confidence=1.0,
+            original=BibEntry(key="fake2024hallucinated", entry_type="article", title="Also Real"),
+        ),
+    ]
+
+    # Remove \cite usage to eliminate format_issues (uses natbib \cite which
+    # the parser counts as style="cite")
+    tex_no_cite = MINIMAL_TEX_WITH_CITATIONS.replace(r"\cite{", r"\citep{")
+    citation_session.main_tex_path.write_text(tex_no_cite)
+
+    with patch("texguardian.llm.streaming.stream_llm") as mock_llm:
+        applied = await generate_and_apply_citation_fixes(
+            citation_session, console,
+            auto_approve=True,
+            validation_results=all_valid,
+        )
+
+        assert applied == 0
+        mock_llm.assert_not_called()

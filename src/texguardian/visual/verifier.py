@@ -260,6 +260,17 @@ class VisualVerifier:
             image_data = img_path.read_bytes()
             image_contents.append(ImageContent(data=image_data, media_type="image/png"))
 
+        # Include source for accurate patches
+        numbered_content = ""
+        try:
+            content = self.session.main_tex_path.read_text()
+            lines = content.splitlines()
+            numbered_content = "\n".join(
+                f"{i + 1:4d}| {line}" for i, line in enumerate(lines)
+            )
+        except Exception:
+            pass
+
         # Build prompt
         paper_spec = self.session.paper_spec
         user_prompt = build_visual_user_prompt(
@@ -269,6 +280,7 @@ class VisualVerifier:
             page_numbers=list(range(1, len(images) + 1)),
             focus_areas=focus_areas,
             previous_issues=previous_issues,
+            numbered_content=numbered_content,
         )
 
         # Send to vision model

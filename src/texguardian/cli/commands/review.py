@@ -111,6 +111,15 @@ class ReviewCommand(Command):
         # Continuous improvement loop
         while result.review_rounds < MAX_REVIEW_ROUNDS:
             result.review_rounds += 1
+
+            # Reset per-round counters so re-detection reflects current state
+            patches_this_round = 0
+            result.verification_issues = []
+            result.figures_issues = 0
+            result.tables_issues = 0
+            result.citations_hallucinated = 0
+            result.citations_valid = 0
+
             console.print()
             console.print(Rule(f"[bold magenta]Round {result.review_rounds}/{MAX_REVIEW_ROUNDS}[/bold magenta]", style="magenta"))
             console.print()
@@ -130,34 +139,48 @@ class ReviewCommand(Command):
             # Step 3: Validate and fix citations
             console.print(Rule(style="dim"))
             console.print("[bold]Step 3/7:[/bold] Validating Citations")
+            patches_before = result.patches_applied
             await self._step_citations(session, console, result, fix=True)
+            patches_this_round += result.patches_applied - patches_before
 
             # Step 4: Analyze and fix figures
             console.print(Rule(style="dim"))
             console.print("[bold]Step 4/7:[/bold] Analyzing Figures")
+            patches_before = result.patches_applied
             await self._step_figures(session, console, result, fix=True)
+            patches_this_round += result.patches_applied - patches_before
 
             # Step 5: Analyze and fix tables
             console.print(Rule(style="dim"))
             console.print("[bold]Step 5/7:[/bold] Analyzing Tables")
+            patches_before = result.patches_applied
             await self._step_tables(session, console, result, fix=True)
+            patches_this_round += result.patches_applied - patches_before
+
+            # Early exit if no progress was made (after first round)
+            if patches_this_round == 0 and result.review_rounds > 1:
+                console.print("\n[yellow]No patches applied this round — stopping.[/yellow]")
+                break
 
             # Step 6: Visual verification of structural fixes
             console.print(Rule(style="dim"))
             console.print("[bold]Step 6/7:[/bold] Visual Verification of Fixes")
-            await self._step_visual_verify_fixes(session, console, result)
+            await self._step_visual_verify_fixes(session, console, result, patches_this_round)
 
-            # Step 7: Visual polish (full mode only)
+            # Step 7: Visual polish (full mode only, skip if nothing was fixed)
             console.print(Rule(style="dim"))
-            if mode == "full":
+            if mode == "full" and patches_this_round > 0:
                 console.print("[bold]Step 7/7:[/bold] Visual Polish Loop")
                 await self._step_visual(session, console, result, custom_instruction=custom_instruction)
+            elif mode == "full" and patches_this_round == 0:
+                console.print("[bold]Step 7/7:[/bold] Visual Polish")
+                console.print("  [dim]Skipped — no patches to visually verify[/dim]")
             else:
                 console.print("[bold]Step 7/7:[/bold] Visual Polish")
                 console.print("  [dim]Skipped (use 'full' mode to enable)[/dim]")
 
             # Final recompile to ensure PDF reflects all patches
-            if result.patches_applied > 0:
+            if patches_this_round > 0:
                 console.print(Rule(style="dim"))
                 console.print("[bold]Final Compile[/bold]")
                 await self._step_compile(session, console, result)
@@ -309,18 +332,17 @@ class ReviewCommand(Command):
 
                 if fix and session.llm_client:
                     console.print("  [cyan]Generating citation fixes...[/cyan]")
-                    try:
-                        from texguardian.cli.commands.citations import (
-                            generate_and_apply_citation_fixes,
-                        )
+                    from texguardian.cli.commands.citations import (
+                        generate_and_apply_citation_fixes,
+                    )
 
-                        applied = await generate_and_apply_citation_fixes(
-                            session, console, auto_approve=True, print_output=False,
-                        )
-                        result.citations_fixed = applied
-                        result.patches_applied += applied
-                    except ImportError:
-                        console.print("  [dim]Run '/citations fix' for detailed patches[/dim]")
+                    # Pass pre-validated results to avoid a second round of API calls
+                    applied = await generate_and_apply_citation_fixes(
+                        session, console, auto_approve=True, print_output=False,
+                        validation_results=validation_results,
+                    )
+                    result.citations_fixed = applied
+                    result.patches_applied += applied
 
         except Exception as e:
             console.print(f"  [red]Error validating citations: {e}[/red]")
@@ -436,10 +458,11 @@ class ReviewCommand(Command):
         session: SessionState,
         console: Console,
         result: ReviewResult,
+        patches_this_round: int = 0,
     ) -> None:
         """Step 6: Visual verification of structural fixes."""
-        if result.patches_applied == 0:
-            console.print("  [dim]No patches were applied — skipping visual verification[/dim]")
+        if patches_this_round == 0:
+            console.print("  [dim]No patches were applied this round — skipping visual verification[/dim]")
             return
 
         from texguardian.visual.verifier import VisualVerifier

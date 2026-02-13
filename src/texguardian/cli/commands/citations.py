@@ -552,3 +552,175 @@ class CitationsCommand(Command):
         """Get argument completions."""
         options = ["validate", "fix"]
         return [o for o in options if o.startswith(partial.lower())]
+
+
+async def generate_and_apply_citation_fixes(
+    session: SessionState,
+    console: Console,
+    *,
+    auto_approve: bool = False,
+    print_output: bool = True,
+    visual_verify: bool = False,
+    validation_results: list | None = None,
+) -> int:
+    """Reusable citation-fix pipeline callable from ``/review``.
+
+    Parameters
+    ----------
+    validation_results:
+        Pre-computed results from ``CitationValidator.validate_bib_file()``.
+        When supplied the function skips the expensive API validation step,
+        avoiding duplicate network calls when the caller already validated.
+
+    Returns the number of patches applied.
+    """
+    from texguardian.latex.parser import LatexParser
+
+    parser = LatexParser(session.project_root, session.config.project.main_tex)
+
+    # Find .bib files
+    bib_files = list(session.project_root.glob("**/*.bib"))
+    if not bib_files:
+        console.print("  [dim]No .bib files found[/dim]")
+        return 0
+
+    # Extract citation data
+    citations = parser.extract_citations_with_locations()
+    bib_keys = set(parser.extract_bib_keys())
+
+    undefined = [c for c in citations if c["key"] not in bib_keys]
+    format_issues = [c for c in citations if c["style"] == "cite"]
+
+    # Validate against real databases (skip if caller already did this)
+    if validation_results is None:
+        from texguardian.citations.validator import CitationValidator
+
+        validator = CitationValidator()
+        validation_results = await validator.validate_bib_file(bib_files[0], console=console)
+
+    hallucinated = [r for r in validation_results if r.status == "likely_hallucinated"]
+    needs_correction = [r for r in validation_results if r.status == "needs_correction"]
+
+    if not undefined and not format_issues and not hallucinated and not needs_correction:
+        console.print("  [green]✓[/green] No citation issues to fix")
+        return 0
+
+    if not session.llm_client:
+        console.print("  [red]LLM client not available[/red]")
+        return 0
+
+    # Build issue list (reuse same logic as _fix_citations)
+    issues_text = []
+
+    if undefined:
+        issues_text.append("## UNDEFINED CITATIONS (not in .bib file):")
+        for u in undefined[:10]:
+            issues_text.append(f"  - {u['key']} at {u['file']}:{u['line']}")
+
+    if hallucinated:
+        issues_text.append("\n## LIKELY HALLUCINATED CITATIONS (not found in real databases):")
+        for h in hallucinated[:10]:
+            issues_text.append(f"  - {h.key}: \"{h.original.title}\"")
+            issues_text.append(f"    Author: {h.original.author}")
+            issues_text.append(f"    Year: {h.original.year}")
+            if h.search_results:
+                issues_text.append("    Similar real papers found:")
+                for sr in h.search_results[:3]:
+                    issues_text.append(f"      * \"{sr.get('title', '')}\" ({sr.get('year', 'N/A')}) - {sr.get('source', '')}")
+                    if sr.get("doi"):
+                        issues_text.append(f"        DOI: {sr.get('doi')}")
+                    if sr.get("authors"):
+                        issues_text.append(f"        Authors: {sr.get('authors')[:80]}...")
+
+    if needs_correction:
+        issues_text.append("\n## CITATIONS NEEDING CORRECTION (metadata issues):")
+        for nc in needs_correction[:10]:
+            issues_text.append(f"  - {nc.key}: {nc.message}")
+            if nc.suggested_correction:
+                sc = nc.suggested_correction
+                if sc.doi:
+                    issues_text.append(f"    Suggested DOI: {sc.doi}")
+                if sc.title != nc.original.title:
+                    issues_text.append(f"    Suggested title: {sc.title}")
+
+    if format_issues:
+        issues_text.append("\n## FORMAT ISSUES (\\cite instead of \\citep/\\citet):")
+        for f in format_issues[:10]:
+            issues_text.append(f"  - {f['key']} at {f['file']}:{f['line']}")
+
+    # Build validation results text
+    validation_text = []
+    for r in validation_results:
+        if r.status in ("likely_hallucinated", "needs_correction"):
+            validation_text.append(f"Key: {r.key}")
+            validation_text.append(f"  Status: {r.status}")
+            validation_text.append(f"  Original title: {r.original.title}")
+            if r.search_results:
+                validation_text.append("  Suggested replacements from real databases:")
+                for sr in r.search_results[:2]:
+                    validation_text.append(f"    - Title: {sr.get('title', '')}")
+                    validation_text.append(f"      Authors: {sr.get('authors', '')}")
+                    validation_text.append(f"      Year: {sr.get('year', '')}")
+                    validation_text.append(f"      DOI: {sr.get('doi', '')}")
+                    validation_text.append(f"      Source: {sr.get('source', '')}")
+
+    # Get file content with line numbers
+    bib_filename = bib_files[0].name
+    numbered_bib = _numbered_content(bib_files[0])
+    filename = session.main_tex_path.name
+    numbered_paper = _numbered_content(session.main_tex_path)
+
+    prompt = CITATION_FIX_PROMPT.format(
+        filename=filename,
+        bib_filename=bib_filename,
+        issues="\n".join(issues_text),
+        validation_results="\n".join(validation_text) if validation_text else "No validation issues",
+        numbered_bib_content=numbered_bib,
+        numbered_paper_content=numbered_paper,
+    )
+
+    console.print("  [cyan]Generating citation fixes...[/cyan]")
+
+    from texguardian.llm.streaming import stream_llm
+
+    response_text = await stream_llm(
+        session.llm_client,
+        messages=[{"role": "user", "content": prompt}],
+        console=console,
+        max_tokens=6000,
+        temperature=0.3,
+        print_output=print_output,
+    )
+
+    if session.context:
+        session.context.add_assistant_message(response_text)
+
+    from texguardian.cli.approval import interactive_approval
+    from texguardian.patch.parser import extract_patches
+
+    patches = extract_patches(response_text)
+    if not patches:
+        console.print("  [yellow]No citation patches generated[/yellow]")
+        return 0
+
+    applied = await interactive_approval(patches, session, console, auto_approve=auto_approve)
+    if applied > 0:
+        console.print(f"  [green]Applied {applied} citation fix(es)[/green]")
+
+    # Phase 2: Visual verification loop
+    if visual_verify and applied > 0:
+        from texguardian.visual.verifier import VisualVerifier
+
+        console.print("  [cyan]Running visual verification of citation fixes...[/cyan]")
+        try:
+            verifier = VisualVerifier(session)
+            vresult = await verifier.run_loop(
+                max_rounds=session.config.safety.max_visual_rounds,
+                console=console,
+                focus_areas=["citations", "bibliography", "references", "inline citations"],
+            )
+            applied += vresult.patches_applied
+        except Exception as e:
+            console.print(f"  [red]Visual verification error: {e}[/red]")
+
+    return applied

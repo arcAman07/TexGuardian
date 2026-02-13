@@ -82,6 +82,16 @@ Focus particularly on:
 Previous round issues (if any):
 {previous_issues}
 
+## LaTeX Source (with line numbers)
+The line numbers below (e.g. "   5| \\begin{{document}}") are for reference only.
+{numbered_content}
+
+IMPORTANT patch rules:
+- Use the line numbers from above in @@ hunk headers (e.g. @@ -5,3 +5,3 @@).
+- Context and removed lines in the patch must contain the RAW file content only —
+  do NOT include the "   5| " line-number prefix. Copy the text after the "| " separator.
+- Each patch must be a valid unified diff string.
+
 Provide your analysis in the specified JSON format.
 """
 
@@ -93,6 +103,7 @@ def build_visual_user_prompt(
     page_numbers: list[int],
     focus_areas: list[str] | None = None,
     previous_issues: list[str] | None = None,
+    numbered_content: str = "",
 ) -> str:
     """Build the user prompt for visual verification."""
     return VISUAL_VERIFIER_USER_PROMPT.format(
@@ -102,4 +113,5 @@ def build_visual_user_prompt(
         page_numbers=", ".join(str(p) for p in page_numbers),
         focus_areas="\n".join(f"- {a}" for a in (focus_areas or ["All categories"])),
         previous_issues="\n".join(f"- {i}" for i in (previous_issues or ["None"])),
+        numbered_content=numbered_content or "(Source not available)",
     )

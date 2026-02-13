@@ -35,11 +35,11 @@ texguardian chat
 Inside the chat session:
 
 ```
-/venue
+/venue iclr 2026
 /review full
 ```
 
-1. `/venue` — select ICLR 2026 template and venue settings
+1. `/venue iclr 2026` — fetch ICLR 2026 style files and update document class
 2. `/review full` — runs the full 7-step fix pipeline until score >= 90
 
 After `/review full` completes, the fixed PDF is at `build/demo_paper.pdf`.

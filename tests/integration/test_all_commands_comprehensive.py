@@ -45,12 +45,12 @@ class TestResult:
 class MockLLMClient:
     """Mock LLM client for testing."""
 
-    async def complete(self, messages, max_tokens=2000, temperature=0.3):
+    async def complete(self, messages, system=None, max_tokens=2000, temperature=0.3):
         response = MagicMock()
         response.content = '{"quality_score": 85, "issues": [], "suggestions": [], "summary": "Mock analysis"}'
         return response
 
-    async def complete_with_vision(self, messages, images, max_tokens=2000, temperature=0.3):
+    async def complete_with_vision(self, messages, images, system=None, max_tokens=2000, temperature=0.3):
         response = MagicMock()
         response.content = '{"quality_score": 85, "issues": [], "patches": [], "summary": "Mock visual analysis"}'
         return response

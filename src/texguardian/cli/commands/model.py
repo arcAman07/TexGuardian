@@ -221,6 +221,7 @@ class ModelCommand(Command):
             console.print("[red]LLM not initialized. Use: /model set <model_name>[/red]")
             return
 
+        from texguardian.llm.prompts.system import COMMAND_SYSTEM_PROMPT
         from texguardian.llm.streaming import stream_llm
 
         prompt = MODEL_ACTION_PROMPT.format(
@@ -234,6 +235,7 @@ class ModelCommand(Command):
             session.llm_client,
             messages=[{"role": "user", "content": prompt}],
             console=console,
+            system=COMMAND_SYSTEM_PROMPT,
             max_tokens=1500,
             temperature=0.3,
         )

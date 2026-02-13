@@ -447,12 +447,14 @@ class SectionCommand(Command):
 
         console.print("[cyan]Generating fixes...[/cyan]\n")
 
+        from texguardian.llm.prompts.system import COMMAND_SYSTEM_PROMPT
         from texguardian.llm.streaming import stream_llm
 
         response_text = await stream_llm(
             session.llm_client,
             messages=[{"role": "user", "content": prompt}],
             console=console,
+            system=COMMAND_SYSTEM_PROMPT,
             max_tokens=4000,
             temperature=0.3,
         )
@@ -505,12 +507,14 @@ class SectionCommand(Command):
 
         console.print("[cyan]Generating edits...[/cyan]\n")
 
+        from texguardian.llm.prompts.system import COMMAND_SYSTEM_PROMPT
         from texguardian.llm.streaming import stream_llm
 
         response_text = await stream_llm(
             session.llm_client,
             messages=[{"role": "user", "content": prompt}],
             console=console,
+            system=COMMAND_SYSTEM_PROMPT,
             max_tokens=4000,
             temperature=0.3,
         )
@@ -557,12 +561,14 @@ class SectionCommand(Command):
 
         console.print("[dim]Analyzing section quality...[/dim]\n")
 
+        from texguardian.llm.prompts.system import COMMAND_SYSTEM_PROMPT
         from texguardian.llm.streaming import stream_llm
 
         content = await stream_llm(
             session.llm_client,
             messages=[{"role": "user", "content": prompt}],
             console=console,
+            system=COMMAND_SYSTEM_PROMPT,
             max_tokens=3000,
             temperature=0.3,
         )

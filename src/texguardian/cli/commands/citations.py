@@ -314,12 +314,14 @@ class CitationsCommand(Command):
 
         console.print("[cyan]Generating edits...[/cyan]\n")
 
+        from texguardian.llm.prompts.system import COMMAND_SYSTEM_PROMPT
         from texguardian.llm.streaming import stream_llm
 
         response_text = await stream_llm(
             session.llm_client,
             messages=[{"role": "user", "content": prompt}],
             console=console,
+            system=COMMAND_SYSTEM_PROMPT,
             max_tokens=4000,
             temperature=0.3,
         )
@@ -513,12 +515,14 @@ class CitationsCommand(Command):
             numbered_paper_content=numbered_paper,
         )
 
+        from texguardian.llm.prompts.system import COMMAND_SYSTEM_PROMPT
         from texguardian.llm.streaming import stream_llm
 
         response_text = await stream_llm(
             session.llm_client,
             messages=[{"role": "user", "content": prompt}],
             console=console,
+            system=COMMAND_SYSTEM_PROMPT,
             max_tokens=6000,
             temperature=0.3,
         )
@@ -681,12 +685,14 @@ async def generate_and_apply_citation_fixes(
 
     console.print("  [cyan]Generating citation fixes...[/cyan]")
 
+    from texguardian.llm.prompts.system import COMMAND_SYSTEM_PROMPT
     from texguardian.llm.streaming import stream_llm
 
     response_text = await stream_llm(
         session.llm_client,
         messages=[{"role": "user", "content": prompt}],
         console=console,
+        system=COMMAND_SYSTEM_PROMPT,
         max_tokens=6000,
         temperature=0.3,
         print_output=print_output,

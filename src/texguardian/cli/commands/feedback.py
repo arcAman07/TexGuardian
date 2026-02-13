@@ -301,12 +301,14 @@ class FeedbackCommand(Command):
         )
 
         try:
+            from texguardian.llm.prompts.system import COMMAND_SYSTEM_PROMPT
             from texguardian.llm.streaming import stream_llm
 
             response_text = await stream_llm(
                 session.llm_client,
                 messages=[{"role": "user", "content": prompt}],
                 console=console,
+                system=COMMAND_SYSTEM_PROMPT,
                 max_tokens=MAX_OUTPUT_TOKENS,
                 temperature=0.3,
             )

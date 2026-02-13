@@ -138,8 +138,38 @@ class LatexCompiler:
             )
 
             log_output = result.stdout + result.stderr
+
+            # Detect stale latexmk state: "error in previous invocation"
+            # means latexmk refused to re-run the engine.  Clean and retry.
+            if (
+                result.returncode != 0
+                and "error in previous invocation" in log_output
+            ):
+                await self.clean(main_tex, output_dir)
+                result = await asyncio.to_thread(
+                    subprocess.run,
+                    cmd,
+                    capture_output=True,
+                    text=True,
+                    cwd=main_tex.parent,
+                    env=env,
+                    timeout=timeout,
+                )
+                log_output = result.stdout + result.stderr
+
             errors = self._extract_errors(log_output)
             warnings = self._extract_warnings(log_output)
+
+            # Fallback: if stdout/stderr had no parseable errors but the
+            # compilation failed, read the .log file directly — it always
+            # contains the full pdflatex output.
+            if not errors and result.returncode != 0:
+                log_file = output_dir / (main_tex.stem + ".log")
+                if log_file.exists():
+                    log_text = log_file.read_text(errors="replace")
+                    errors = self._extract_errors(log_text)
+                    if not warnings:
+                        warnings = self._extract_warnings(log_text)
 
             # Check for PDF
             pdf_name = main_tex.stem + ".pdf"

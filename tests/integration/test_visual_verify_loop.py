@@ -392,15 +392,22 @@ async def test_generate_table_fixes_visual_verify(session, console):
 
 
 @pytest.mark.asyncio
-async def test_review_has_seven_steps(session, console):
-    """Review pipeline should show 7 steps in output."""
+async def test_review_has_eight_steps(session, console):
+    """Review pipeline should show 8 steps in output."""
     from texguardian.cli.commands.review import ReviewCommand
 
     cmd = ReviewCommand()
 
-    # Mock all steps to avoid real compilation / LLM calls
+    # Mock all steps to avoid real compilation / LLM calls.
+    # _step_fix_verification_issues simulates applying a patch so that
+    # visual steps are triggered.
     cmd._step_compile = AsyncMock(return_value=True)
     cmd._step_verify = AsyncMock()
+
+    async def fake_fix_verify(_session, _console, result):
+        result.patches_applied += 1
+
+    cmd._step_fix_verification_issues = AsyncMock(side_effect=fake_fix_verify)
     cmd._step_citations = AsyncMock()
     cmd._step_figures = AsyncMock()
     cmd._step_tables = AsyncMock()
@@ -416,24 +423,31 @@ async def test_review_has_seven_steps(session, console):
     await cmd.execute(session, "full", console)
 
     output = _strip_ansi(console.file.getvalue())
-    assert "Step 1/7" in output
-    assert "Step 2/7" in output
-    assert "Step 3/7" in output
-    assert "Step 4/7" in output
-    assert "Step 5/7" in output
-    assert "Step 6/7" in output
-    assert "Step 7/7" in output
+    assert "Step 1/8" in output
+    assert "Step 2/8" in output
+    assert "Step 3/8" in output
+    assert "Step 4/8" in output
+    assert "Step 5/8" in output
+    assert "Step 6/8" in output
+    assert "Step 7/8" in output
+    assert "Step 8/8" in output
 
 
 @pytest.mark.asyncio
-async def test_review_step6_visual_verify_called(session, console):
-    """Step 6 should call _step_visual_verify_fixes."""
+async def test_review_step7_visual_verify_called(session, console):
+    """Step 7 should call _step_visual_verify_fixes when patches were applied."""
     from texguardian.cli.commands.review import ReviewCommand
 
     cmd = ReviewCommand()
 
     cmd._step_compile = AsyncMock(return_value=True)
     cmd._step_verify = AsyncMock()
+
+    # Simulate a patch being applied so visual steps trigger
+    async def fake_fix_verify(_session, _console, result):
+        result.patches_applied += 1
+
+    cmd._step_fix_verification_issues = AsyncMock(side_effect=fake_fix_verify)
     cmd._step_citations = AsyncMock()
     cmd._step_figures = AsyncMock()
     cmd._step_tables = AsyncMock()
@@ -452,13 +466,19 @@ async def test_review_step6_visual_verify_called(session, console):
 
 @pytest.mark.asyncio
 async def test_review_quick_skips_visual_polish(session, console):
-    """Quick mode should skip Step 7 (visual polish) but still run Step 6."""
+    """Quick mode should skip Step 8 (visual polish) but still run Step 7."""
     from texguardian.cli.commands.review import ReviewCommand
 
     cmd = ReviewCommand()
 
     cmd._step_compile = AsyncMock(return_value=True)
     cmd._step_verify = AsyncMock()
+
+    # Simulate a patch being applied so Step 7 (visual verify) triggers
+    async def fake_fix_verify(_session, _console, result):
+        result.patches_applied += 1
+
+    cmd._step_fix_verification_issues = AsyncMock(side_effect=fake_fix_verify)
     cmd._step_citations = AsyncMock()
     cmd._step_figures = AsyncMock()
     cmd._step_tables = AsyncMock()
@@ -472,9 +492,9 @@ async def test_review_quick_skips_visual_polish(session, console):
 
     await cmd.execute(session, "quick", console)
 
-    # Step 6 should still run
+    # Step 7 (visual verify) should still run when patches were applied
     cmd._step_visual_verify_fixes.assert_called_once()
-    # Step 7 should be skipped
+    # Step 8 (visual polish) should be skipped in quick mode
     cmd._step_visual.assert_not_called()
     output = console.file.getvalue()
     assert "Skipped" in output

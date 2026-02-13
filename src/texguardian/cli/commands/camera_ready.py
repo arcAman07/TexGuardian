@@ -386,11 +386,14 @@ class CameraReadyCommand(Command):
             f"[cyan]Fetching {venue.display_name} camera-ready requirements...[/cyan]"
         )
 
+        from texguardian.llm.prompts.system import COMMAND_SYSTEM_PROMPT
+
         prompt = VENUE_CHECKLIST_PROMPT.format(venue=venue.display_name)
 
         try:
             response = await session.llm_client.complete(
                 messages=[{"role": "user", "content": prompt}],
+                system=COMMAND_SYSTEM_PROMPT,
                 max_tokens=1000,
                 temperature=0.2,
             )
@@ -725,27 +728,18 @@ class CameraReadyCommand(Command):
         )
 
         # Stream the LLM response
-        full_response: list[str] = []
-        try:
-            async for chunk in session.llm_client.stream(
-                messages=[{"role": "user", "content": prompt}],
-                max_tokens=4000,
-                temperature=0.3,
-            ):
-                if chunk.content:
-                    console.print(chunk.content, end="")
-                    full_response.append(chunk.content)
-            console.print("\n")
-        except Exception as e:
-            console.print(f"\n[red]Error during LLM streaming: {e}[/red]")
-            response = await session.llm_client.complete(
-                messages=[{"role": "user", "content": prompt}],
-                max_tokens=4000,
-                temperature=0.3,
-            )
-            full_response = [response.content]
+        from texguardian.llm.prompts.system import COMMAND_SYSTEM_PROMPT
+        from texguardian.llm.streaming import stream_llm
 
-        response_text = "".join(full_response)
+        response_text = await stream_llm(
+            session.llm_client,
+            messages=[{"role": "user", "content": prompt}],
+            console=console,
+            system=COMMAND_SYSTEM_PROMPT,
+            max_tokens=4000,
+            temperature=0.3,
+        )
+        console.print()
 
         # Save response to context so /approve can find patches
         if session.context:

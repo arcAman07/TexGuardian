@@ -4,13 +4,14 @@ This is the main command that runs the entire review loop CONTINUOUSLY
 until the paper reaches the threshold score or max iterations:
 1. Compile
 2. Verify all checks
-3. Validate + fix citations
-4. Analyze + fix figures
-5. Analyze + fix tables
-6. Visual verification of structural fixes
-7. Visual polish loop
-8. Loop back if score < threshold
-9. Final report
+3. Fix verification issues (LLM-based)
+4. Validate + fix citations
+5. Analyze + fix figures
+6. Analyze + fix tables
+7. Visual verification of structural fixes
+8. Visual polish loop
+9. Loop back if score < threshold
+10. Final report
 """
 
 from __future__ import annotations
@@ -27,7 +28,7 @@ from texguardian.cli.commands.registry import Command
 if TYPE_CHECKING:
     from rich.console import Console
 
-    from texguardian.core.session import SessionState
+    from texguardian.core.session import CompilationResult, SessionState
 
 
 # Threshold score to consider paper "ready"
@@ -124,59 +125,82 @@ class ReviewCommand(Command):
             console.print(Rule(f"[bold magenta]Round {result.review_rounds}/{MAX_REVIEW_ROUNDS}[/bold magenta]", style="magenta"))
             console.print()
 
+            n_steps = 8
+
             # Step 1: Compile
-            console.print("[bold]Step 1/7:[/bold] Compiling LaTeX")
+            console.print(f"[bold]Step 1/{n_steps}:[/bold] Compiling LaTeX")
             compile_ok = await self._step_compile(session, console, result)
+            if not compile_ok and session.llm_client and session.last_compilation:
+                console.print("  [cyan]Attempting to fix compilation errors...[/cyan]")
+                compile_ok = await self._step_fix_compile_errors(
+                    session, console, result, session.last_compilation,
+                )
             if not compile_ok:
                 console.print("[red]Compilation failed. Cannot continue.[/red]")
                 break
 
             # Step 2: Run verification checks
             console.print(Rule(style="dim"))
-            console.print("[bold]Step 2/7:[/bold] Running Verification Checks")
+            console.print(f"[bold]Step 2/{n_steps}:[/bold] Running Verification Checks")
             await self._step_verify(session, console, result)
 
-            # Step 3: Validate and fix citations
+            # Step 3: Fix verification issues via LLM
             console.print(Rule(style="dim"))
-            console.print("[bold]Step 3/7:[/bold] Validating Citations")
+            console.print(f"[bold]Step 3/{n_steps}:[/bold] Fixing Verification Issues")
+            patches_before = result.patches_applied
+            await self._step_fix_verification_issues(session, console, result)
+            patches_this_round += result.patches_applied - patches_before
+
+            # Step 4: Validate and fix citations
+            console.print(Rule(style="dim"))
+            console.print(f"[bold]Step 4/{n_steps}:[/bold] Validating Citations")
             patches_before = result.patches_applied
             await self._step_citations(session, console, result, fix=True)
             patches_this_round += result.patches_applied - patches_before
 
-            # Step 4: Analyze and fix figures
+            # Step 5: Analyze and fix figures
             console.print(Rule(style="dim"))
-            console.print("[bold]Step 4/7:[/bold] Analyzing Figures")
+            console.print(f"[bold]Step 5/{n_steps}:[/bold] Analyzing Figures")
             patches_before = result.patches_applied
             await self._step_figures(session, console, result, fix=True)
             patches_this_round += result.patches_applied - patches_before
 
-            # Step 5: Analyze and fix tables
+            # Step 6: Analyze and fix tables
             console.print(Rule(style="dim"))
-            console.print("[bold]Step 5/7:[/bold] Analyzing Tables")
+            console.print(f"[bold]Step 6/{n_steps}:[/bold] Analyzing Tables")
             patches_before = result.patches_applied
             await self._step_tables(session, console, result, fix=True)
             patches_this_round += result.patches_applied - patches_before
 
-            # Early exit if no progress was made (after first round)
-            if patches_this_round == 0 and result.review_rounds > 1:
-                console.print("\n[yellow]No patches applied this round — stopping.[/yellow]")
-                break
+            # Recompile if any patches were applied (so visual steps see a fresh PDF)
+            if patches_this_round > 0:
+                console.print(Rule(style="dim"))
+                console.print("[bold]Recompiling[/bold] (patches applied)")
+                await self._step_compile(session, console, result)
 
-            # Step 6: Visual verification of structural fixes
+            # Step 7: Visual verification of structural fixes
             console.print(Rule(style="dim"))
-            console.print("[bold]Step 6/7:[/bold] Visual Verification of Fixes")
-            await self._step_visual_verify_fixes(session, console, result, patches_this_round)
-
-            # Step 7: Visual polish (full mode only, skip if nothing was fixed)
-            console.print(Rule(style="dim"))
-            if mode == "full" and patches_this_round > 0:
-                console.print("[bold]Step 7/7:[/bold] Visual Polish Loop")
-                await self._step_visual(session, console, result, custom_instruction=custom_instruction)
-            elif mode == "full" and patches_this_round == 0:
-                console.print("[bold]Step 7/7:[/bold] Visual Polish")
-                console.print("  [dim]Skipped — no patches to visually verify[/dim]")
+            console.print(f"[bold]Step 7/{n_steps}:[/bold] Visual Verification")
+            if patches_this_round > 0:
+                patches_before = result.patches_applied
+                await self._step_visual_verify_fixes(session, console, result, patches_this_round)
+                patches_this_round += result.patches_applied - patches_before
             else:
-                console.print("[bold]Step 7/7:[/bold] Visual Polish")
+                console.print("  [dim]No patches to verify — skipping[/dim]")
+
+            # Step 8: Visual polish
+            # Always run on the first round in full mode — the visual verifier
+            # can find and fix layout issues (overflow, spacing) that structural
+            # checks miss.  On subsequent rounds, skip if no patches were applied.
+            console.print(Rule(style="dim"))
+            console.print(f"[bold]Step 8/{n_steps}:[/bold] Visual Polish")
+            if mode == "full" and (result.review_rounds == 1 or patches_this_round > 0):
+                patches_before = result.patches_applied
+                await self._step_visual(session, console, result, custom_instruction=custom_instruction)
+                patches_this_round += result.patches_applied - patches_before
+            elif mode == "full":
+                console.print("  [dim]No new patches this round — skipping[/dim]")
+            else:
                 console.print("  [dim]Skipped (use 'full' mode to enable)[/dim]")
 
             # Final recompile to ensure PDF reflects all patches
@@ -192,6 +216,11 @@ class ReviewCommand(Command):
             # Check if we've reached the threshold
             if result.overall_score >= SCORE_THRESHOLD:
                 console.print(f"\n[green bold]✓ Reached target score {result.overall_score}/100![/green bold]")
+                break
+
+            # Early exit if no progress was made (after first round)
+            if patches_this_round == 0 and result.review_rounds > 1:
+                console.print("\n[yellow]No patches applied this round — stopping.[/yellow]")
                 break
 
             # Continue to next round
@@ -239,6 +268,86 @@ class ReviewCommand(Command):
         except Exception as e:
             console.print(f"  [red]✗[/red] Error: {e}")
             return False
+
+    async def _step_fix_compile_errors(
+        self,
+        session: SessionState,
+        console: Console,
+        result: ReviewResult,
+        compile_result: CompilationResult,
+    ) -> bool:
+        """Attempt to fix compilation errors using the LLM.
+
+        Tries up to ``_MAX_FIX_ATTEMPTS`` cycles of: ask the LLM for a patch,
+        apply it, then recompile.  Returns ``True`` if compilation succeeds
+        after a fix.
+        """
+        from texguardian.cli.approval import interactive_approval
+        from texguardian.llm.prompts.errors import build_full_error_fix_prompt
+        from texguardian.llm.prompts.system import COMMAND_SYSTEM_PROMPT
+        from texguardian.llm.streaming import stream_llm
+        from texguardian.patch.parser import extract_patches
+
+        max_attempts = 2
+        for attempt in range(1, max_attempts + 1):
+            errors = compile_result.errors or []
+            if not errors:
+                break
+
+            console.print(f"  [dim]Fix attempt {attempt}/{max_attempts}[/dim]")
+
+            # Build numbered content for the LLM
+            tex_path = session.main_tex_path
+            content = tex_path.read_text()
+            lines = content.splitlines()
+            numbered = "\n".join(f"{i + 1:4d}| {line}" for i, line in enumerate(lines))
+
+            prompt = build_full_error_fix_prompt(
+                errors=errors[:5],
+                filename=tex_path.name,
+                numbered_content=numbered,
+            )
+
+            response_text = await stream_llm(
+                session.llm_client,
+                messages=[{"role": "user", "content": prompt}],
+                console=console,
+                system=COMMAND_SYSTEM_PROMPT,
+                max_tokens=4000,
+                temperature=0.3,
+                print_output=False,
+            )
+
+            patches = extract_patches(response_text)
+            if not patches:
+                console.print("  [yellow]No patches generated for compilation errors[/yellow]")
+                break
+
+            applied = await interactive_approval(
+                patches, session, console, auto_approve=True,
+            )
+            if applied == 0:
+                console.print("  [yellow]No patches could be applied[/yellow]")
+                break
+
+            result.patches_applied += applied
+            console.print(f"  [green]Applied {applied} fix(es) — recompiling...[/green]")
+
+            # Clean stale build artifacts so latexmk reruns the engine
+            from texguardian.latex.compiler import LatexCompiler
+
+            compiler = LatexCompiler(session.config)
+            await compiler.clean(session.main_tex_path, session.output_dir)
+
+            # Recompile to check if the fix worked
+            recompile_ok = await self._step_compile(session, console, result)
+            if recompile_ok:
+                return True
+
+            # Update compile_result for next attempt
+            compile_result = session.last_compilation  # type: ignore[assignment]
+
+        return False
 
     async def _step_verify(
         self,
@@ -298,6 +407,94 @@ class ReviewCommand(Command):
                 console.print(f"    [dim]... and {len(issues) - 5} more[/dim]")
         else:
             console.print("  [green]✓[/green] All checks passed")
+
+    async def _step_fix_verification_issues(
+        self,
+        session: SessionState,
+        console: Console,
+        result: ReviewResult,
+    ) -> None:
+        """Step 3: Use the LLM to fix verification issues found in Step 2."""
+        issues = result.verification_issues
+        if not issues:
+            console.print("  [green]✓[/green] No issues to fix")
+            return
+
+        if not session.llm_client:
+            console.print("  [dim]LLM not available — skipping[/dim]")
+            return
+
+        # Skip page-limit issues — those can't be fixed by a simple patch
+        fixable = [i for i in issues if not i.startswith("Page limit")]
+        if not fixable:
+            console.print("  [dim]No auto-fixable issues[/dim]")
+            return
+
+        from texguardian.cli.approval import interactive_approval
+        from texguardian.llm.prompts.system import COMMAND_SYSTEM_PROMPT
+        from texguardian.llm.streaming import stream_llm
+        from texguardian.patch.parser import extract_patches
+
+        tex_path = session.main_tex_path
+        content = tex_path.read_text()
+        lines = content.splitlines()
+        numbered = "\n".join(f"{i + 1:4d}| {line}" for i, line in enumerate(lines))
+        filename = tex_path.name
+
+        issues_text = "\n".join(f"- {i}" for i in fixable)
+
+        prompt = (
+            "Fix the following issues found during verification of this LaTeX paper.\n\n"
+            "## Issues\n"
+            f"{issues_text}\n\n"
+            "## Full File Content (with line numbers)\n"
+            f"```latex\n{numbered}\n```\n\n"
+            "## Instructions\n"
+            "1. Fix ALL issues listed above with minimal changes.\n"
+            "2. For 'citation_format' issues: replace bare \\cite{} with "
+            "\\citep{} (parenthetical) or \\citet{} (textual) as appropriate.\n"
+            "3. For 'todo_remaining': remove or replace TODO/FIXME/XXX markers.\n"
+            "4. For 'figure_overflow': reduce width to fit within \\columnwidth "
+            "(e.g. change width=1.5\\columnwidth to width=\\columnwidth).\n"
+            "5. For 'hline_usage': replace \\hline with booktabs commands "
+            "(\\toprule, \\midrule, \\bottomrule).\n"
+            "6. For 'Undefined citations': remove or comment out the undefined "
+            "\\cite/\\citep/\\citet calls.\n"
+            "7. Do NOT rewrite unrelated code.\n"
+            "8. Output unified diff patches.\n\n"
+            "## Output Format\n"
+            "### Explanation\n"
+            "[Brief explanation of each fix]\n\n"
+            "### Patch\n"
+            f"```diff\n--- a/{filename}\n+++ b/{filename}\n"
+            "@@ -X,Y +X,Y @@\n[patch content]\n```\n"
+        )
+
+        console.print(f"  [cyan]Generating fixes for {len(fixable)} issue(s)...[/cyan]")
+
+        response_text = await stream_llm(
+            session.llm_client,
+            messages=[{"role": "user", "content": prompt}],
+            console=console,
+            system=COMMAND_SYSTEM_PROMPT,
+            max_tokens=4000,
+            temperature=0.3,
+            print_output=False,
+        )
+
+        patches = extract_patches(response_text)
+        if not patches:
+            console.print("  [yellow]No patches generated[/yellow]")
+            return
+
+        applied = await interactive_approval(
+            patches, session, console, auto_approve=True,
+        )
+        if applied > 0:
+            console.print(f"  [green]Applied {applied} verification fix(es)[/green]")
+            result.patches_applied += applied
+        else:
+            console.print("  [yellow]No patches could be applied[/yellow]")
 
     async def _step_citations(
         self,

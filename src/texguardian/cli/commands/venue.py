@@ -177,6 +177,7 @@ class VenueCommand(Command):
             console.print("[red]LLM client not initialized. Use simple syntax: /venue <name> [year][/red]")
             return
 
+        from texguardian.llm.prompts.system import COMMAND_SYSTEM_PROMPT
         from texguardian.llm.streaming import stream_llm
 
         # Build prompt
@@ -195,6 +196,7 @@ class VenueCommand(Command):
             session.llm_client,
             messages=[{"role": "user", "content": prompt}],
             console=console,
+            system=COMMAND_SYSTEM_PROMPT,
             max_tokens=1500,
             temperature=0.3,
         )
@@ -259,13 +261,30 @@ class VenueCommand(Command):
         """Download template and offer to update paper_spec."""
         console.print(f"[bold cyan]Searching for {venue_name.upper()} {year} template...[/bold cyan]\n")
 
+        # Snapshot .sty/.cls files before download
+        style_exts = {".sty", ".cls"}
+        before = {
+            p.name for p in session.project_root.iterdir()
+            if p.suffix in style_exts
+        }
+
         success = await self._find_and_download(venue_name, year, session, console)
 
         if success:
             console.print("\n[green]✓ Template files downloaded to project directory![/green]")
-            console.print("\n[bold]Next steps:[/bold]")
-            console.print(f"  1. Add to your main.tex: [cyan]\\usepackage{{{venue_name}{year}}}[/cyan]")
-            console.print("  2. Or check downloaded files for exact package name")
+
+            # Determine which .sty/.cls files are new
+            after = {
+                p.name for p in session.project_root.iterdir()
+                if p.suffix in style_exts
+            }
+            new_files = sorted(after - before)
+
+            # Auto-update the main .tex file
+            if new_files:
+                self._update_tex_for_style_files(
+                    new_files, session, venue_name, console,
+                )
 
             # Offer to update paper_spec
             await self._offer_update_spec(venue_name, year, session, console)
@@ -274,6 +293,94 @@ class VenueCommand(Command):
             console.print("[dim]Try searching manually:[/dim]")
             console.print(f"  - GitHub: https://github.com/search?q={venue_name}+{year}+latex+template")
             console.print(f"  - CTAN: https://ctan.org/search?phrase={venue_name}")
+
+    def _update_tex_for_style_files(
+        self,
+        downloaded_files: list[str],
+        session: SessionState,
+        venue: str,
+        console: Console,
+    ) -> None:
+        """Auto-update the main .tex file to use downloaded style files."""
+        tex_path = session.main_tex_path
+        if not tex_path.exists():
+            return
+
+        content = tex_path.read_text()
+
+        # Split at \begin{document} to only modify the preamble
+        doc_marker = r"\begin{document}"
+        marker_pos = content.find(doc_marker)
+        if marker_pos == -1:
+            return  # Not a standard LaTeX file
+        preamble = content[:marker_pos]
+        body = content[marker_pos:]
+
+        venue_info = KNOWN_VENUES.get(venue, {})
+        venue_pattern = venue_info.get("pattern", re.escape(venue))
+        changes: list[str] = []
+
+        for filename in downloaded_files:
+            name_no_ext = Path(filename).stem
+            ext = Path(filename).suffix
+
+            if ext == ".sty":
+                # Look for an existing \usepackage{<venue_pattern>...} to replace
+                pkg_re = re.compile(
+                    r"(\\usepackage\s*(?:\[[^\]]*\])?\s*\{)"
+                    + r"(" + venue_pattern + r"[^}]*)"
+                    + r"(\})",
+                )
+                match = pkg_re.search(preamble)
+                if match and match.group(2) != name_no_ext:
+                    old_pkg = match.group(2)
+                    preamble = preamble[:match.start(2)] + name_no_ext + preamble[match.end(2):]
+                    changes.append(
+                        f"Replaced \\usepackage{{{old_pkg}}} "
+                        f"with \\usepackage{{{name_no_ext}}}"
+                    )
+                elif not match:
+                    # No existing venue package — insert after last \usepackage
+                    last_pkg = None
+                    for m in re.finditer(r"\\usepackage\s*(?:\[[^\]]*\])?\s*\{[^}]*\}", preamble):
+                        last_pkg = m
+                    if last_pkg:
+                        insert_pos = last_pkg.end()
+                        insert_line = f"\n\\usepackage{{{name_no_ext}}}"
+                        preamble = preamble[:insert_pos] + insert_line + preamble[insert_pos:]
+                        changes.append(f"Added \\usepackage{{{name_no_ext}}}")
+
+            elif ext == ".cls":
+                # Replace \documentclass{<venue_pattern>...}
+                cls_re = re.compile(
+                    r"(\\documentclass\s*(?:\[[^\]]*\])?\s*\{)"
+                    + r"(" + venue_pattern + r"[^}]*)"
+                    + r"(\})",
+                )
+                match = cls_re.search(preamble)
+                if match and match.group(2) != name_no_ext:
+                    old_cls = match.group(2)
+                    preamble = preamble[:match.start(2)] + name_no_ext + preamble[match.end(2):]
+                    changes.append(
+                        f"Replaced \\documentclass{{{old_cls}}} "
+                        f"with \\documentclass{{{name_no_ext}}}"
+                    )
+
+        if changes:
+            tex_path.write_text(preamble + body)
+            console.print("\n[bold]Auto-updated main .tex file:[/bold]")
+            for change in changes:
+                console.print(f"  [green]✓[/green] {change}")
+        else:
+            # No auto-update was possible — show manual hint
+            pkg_names = [
+                Path(f).stem for f in downloaded_files
+                if f.endswith(".sty") or f.endswith(".cls")
+            ]
+            if pkg_names:
+                console.print("\n[bold]Downloaded style files:[/bold]")
+                for pkg in pkg_names:
+                    console.print(f"  [cyan]{pkg}[/cyan]")
 
     def _list_venues(self, console: Console) -> None:
         """List known venues."""
@@ -365,8 +472,15 @@ class VenueCommand(Command):
         client: httpx.AsyncClient,
         console: Console,
     ) -> bool:
-        """Download from GitHub repo."""
-        # Try to get the repo contents
+        """Download from GitHub repo.
+
+        Strategy (in order):
+        1. Check for a year-named subdirectory (e.g. ``iclr2026/``)
+        2. Check for a year-named zip file (e.g. ``iclr2026.zip``)
+        3. Look for year-matched style files at the repo root
+        Do NOT fall back to wrong-year files — return False so the
+        caller can try the next search strategy.
+        """
         api_url = f"https://api.github.com/repos/{repo}/contents"
 
         try:
@@ -374,39 +488,97 @@ class VenueCommand(Command):
             if response.status_code != 200:
                 return False
 
-            files = response.json()
+            root_items = response.json()
 
-            # Two-pass filtering: prefer files matching both venue AND year
-            year_matched = []
-            venue_matched = []
-            for file_info in files:
-                name = file_info.get("name", "")
-                if any(name.endswith(ext) for ext in [".sty", ".bst", ".cls"]):
-                    if venue in name.lower() and year in name:
-                        year_matched.append(file_info)
-                    elif venue in name.lower():
-                        venue_matched.append(file_info)
+            # --- 1. Year-named subdirectory (e.g. "iclr2026") ---------
+            year_dirs = [
+                item for item in root_items
+                if item.get("type") == "dir"
+                and venue in item.get("name", "").lower()
+                and year in item.get("name", "")
+            ]
+            for dir_item in year_dirs:
+                dir_name = dir_item["name"]
+                console.print(f"    Found subdirectory: {dir_name}/")
+                sub_url = f"{api_url}/{dir_name}"
+                sub_resp = await client.get(sub_url)
+                if sub_resp.status_code != 200:
+                    continue
+                sub_files = sub_resp.json()
+                downloaded = await self._download_style_files_from_listing(
+                    sub_files, target_dir, client, console,
+                )
+                if downloaded:
+                    return True
 
-            targets = year_matched if year_matched else venue_matched
-            if targets and not year_matched:
-                console.print(f"    [yellow]No {year} files found, using latest available[/yellow]")
+            # --- 2. Year-named zip (e.g. "iclr2026.zip") --------------
+            year_zips = [
+                item for item in root_items
+                if item.get("name", "").endswith(".zip")
+                and venue in item.get("name", "").lower()
+                and year in item.get("name", "")
+            ]
+            for zip_item in year_zips:
+                zip_name = zip_item["name"]
+                download_url = zip_item.get("download_url")
+                if not download_url:
+                    continue
+                console.print(f"    Found archive: {zip_name}")
+                zip_resp = await client.get(download_url)
+                if zip_resp.status_code == 200:
+                    if self._extract_zip(zip_resp.content, target_dir, console):
+                        return True
 
-            downloaded = []
-            for file_info in targets:
-                name = file_info.get("name", "")
-                download_url = file_info.get("download_url")
-                if download_url:
-                    file_response = await client.get(download_url)
-                    if file_response.status_code == 200:
-                        (target_dir / name).write_bytes(file_response.content)
-                        downloaded.append(name)
-                        console.print(f"    [green]✓[/green] Downloaded: {name}")
+            # --- 3. Year-matched style files at root -------------------
+            year_matched = [
+                item for item in root_items
+                if any(item.get("name", "").endswith(ext) for ext in [".sty", ".bst", ".cls"])
+                and venue in item.get("name", "").lower()
+                and year in item.get("name", "")
+            ]
+            if year_matched:
+                downloaded = await self._download_style_files_from_listing(
+                    year_matched, target_dir, client, console,
+                )
+                if downloaded:
+                    return True
 
-            return len(downloaded) > 0
+            # Do NOT fall back to wrong-year files
+            console.print(f"    [yellow]No {year} files found in {repo}[/yellow]")
+            return False
 
         except Exception as e:
             console.print(f"    [dim]GitHub error: {e}[/dim]")
             return False
+
+    async def _download_style_files_from_listing(
+        self,
+        file_listing: list[dict],
+        target_dir: Path,
+        client: httpx.AsyncClient,
+        console: Console,
+    ) -> list[str]:
+        """Download .sty/.bst/.cls files from a GitHub API file listing.
+
+        Returns the list of filenames that were successfully downloaded.
+        """
+        style_exts = (".sty", ".bst", ".cls")
+        downloaded: list[str] = []
+        for file_info in file_listing:
+            if not isinstance(file_info, dict):
+                continue
+            name = file_info.get("name", "")
+            if not any(name.endswith(ext) for ext in style_exts):
+                continue
+            download_url = file_info.get("download_url")
+            if not download_url:
+                continue
+            file_response = await client.get(download_url)
+            if file_response.status_code == 200:
+                (target_dir / name).write_bytes(file_response.content)
+                downloaded.append(name)
+                console.print(f"    [green]✓[/green] Downloaded: {name}")
+        return downloaded
 
     async def _search_github(
         self,
@@ -416,8 +588,56 @@ class VenueCommand(Command):
         client: httpx.AsyncClient,
         console: Console,
     ) -> bool:
-        """Search GitHub for template files."""
-        # Search for repos
+        """Search GitHub for template files.
+
+        Uses the GitHub code search API to find .sty files matching the
+        venue+year, then falls back to repository search with subdirectory
+        traversal.
+        """
+        # --- Strategy A: GitHub code search for the exact .sty file ---
+        code_query = f"{venue}{year} extension:sty"
+        code_url = f"https://api.github.com/search/code?q={code_query}&per_page=5"
+        try:
+            code_resp = await client.get(code_url)
+            if code_resp.status_code == 200:
+                code_items = code_resp.json().get("items", [])
+                for item in code_items:
+                    name = item.get("name", "")
+                    repo_info = item.get("repository", {})
+                    repo_full = repo_info.get("full_name", "")
+                    if not name.endswith(".sty"):
+                        continue
+                    if venue not in name.lower() or year not in name:
+                        continue
+                    # Get the raw download URL for this file
+                    file_api = item.get("url")
+                    if not file_api:
+                        continue
+                    console.print(f"    Found {name} in {repo_full}")
+                    file_meta = await client.get(file_api)
+                    if file_meta.status_code != 200:
+                        continue
+                    download_url = file_meta.json().get("download_url")
+                    if not download_url:
+                        continue
+                    # Download this file and its siblings (.bst, .cls, etc.)
+                    # by listing the containing directory
+                    file_path = item.get("path", "")
+                    dir_path = "/".join(file_path.split("/")[:-1]) if "/" in file_path else ""
+                    dir_api = f"https://api.github.com/repos/{repo_full}/contents"
+                    if dir_path:
+                        dir_api += f"/{dir_path}"
+                    dir_resp = await client.get(dir_api)
+                    if dir_resp.status_code == 200:
+                        downloaded = await self._download_style_files_from_listing(
+                            dir_resp.json(), target_dir, client, console,
+                        )
+                        if downloaded:
+                            return True
+        except Exception:
+            pass  # Fall through to repo search
+
+        # --- Strategy B: Repo search with subdirectory traversal -------
         query = f"{venue} {year} latex template"
         search_url = f"https://api.github.com/search/repositories?q={query}&sort=stars&per_page=5"
 
@@ -432,29 +652,34 @@ class VenueCommand(Command):
                 repo_name = repo.get("full_name")
                 console.print(f"    Checking: {repo_name}...")
 
-                # Get contents
                 contents_url = f"https://api.github.com/repos/{repo_name}/contents"
                 contents_response = await client.get(contents_url)
 
-                if contents_response.status_code == 200:
-                    files = contents_response.json()
-                    downloaded = []
+                if contents_response.status_code != 200:
+                    continue
 
-                    for file_info in files:
-                        if not isinstance(file_info, dict):
-                            continue
-                        name = file_info.get("name", "")
-                        if any(name.endswith(ext) for ext in [".sty", ".bst", ".cls"]):
-                            download_url = file_info.get("download_url")
-                            if download_url:
-                                file_response = await client.get(download_url)
-                                if file_response.status_code == 200:
-                                    (target_dir / name).write_bytes(file_response.content)
-                                    downloaded.append(name)
-                                    console.print(f"    [green]✓[/green] Downloaded: {name}")
+                root_items = contents_response.json()
 
-                    if downloaded:
-                        return True
+                # Check year-named subdirectories first
+                for item in root_items:
+                    if not isinstance(item, dict):
+                        continue
+                    if item.get("type") == "dir" and year in item.get("name", ""):
+                        sub_url = f"{contents_url}/{item['name']}"
+                        sub_resp = await client.get(sub_url)
+                        if sub_resp.status_code == 200:
+                            downloaded = await self._download_style_files_from_listing(
+                                sub_resp.json(), target_dir, client, console,
+                            )
+                            if downloaded:
+                                return True
+
+                # Check root-level style files
+                downloaded = await self._download_style_files_from_listing(
+                    root_items, target_dir, client, console,
+                )
+                if downloaded:
+                    return True
 
         except Exception as e:
             console.print(f"    [dim]Search error: {e}[/dim]")

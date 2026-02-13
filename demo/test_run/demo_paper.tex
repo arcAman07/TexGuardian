@@ -11,6 +11,8 @@
 \usepackage{tikz}
 \usepackage{pgfplots}
 \pgfplotsset{compat=1.18}
+\usepackage{fancyhdr}
+\usepackage{natbib}
 \usetikzlibrary{arrows.meta,positioning,calc}
 
 \title{Scaling Sparse Mixture-of-Experts for Long-Context Document Understanding}
@@ -43,23 +45,20 @@ Our contributions: (1) structure-aware routing, (2) sub-quadratic attention
 scaling to 128K tokens, (3) evaluation on four benchmarks (Figure~\ref{fig:pipeline}).
 
 \begin{table}[H]
-    \caption{Comparison of document understanding approaches. $\checkmark$ = supported, $\times$ = not supported.}
+    \caption{Comparison of document understanding approaches across key capabilities. Our method is the only one supporting all features while maintaining competitive parameter count and training cost. $\checkmark$ = supported, $\times$ = not supported.}
     \label{tab:comparison}
-    \noindent
-    \begin{tabular}{l|c|c|c|c|c|c|c|c|c}
-        \hline
+    \centering
+    \begin{tabular}{lccccccccr}
+        \toprule
         Method & Long-Context & Sparse & Structure-Aware & Sub-Quadratic & Multi-Gran. & Load-Balanced & Cross-Doc & Params & Training Cost \\
-        \hline\hline
+        \midrule
         BERT-base & $\times$ & $\times$ & $\times$ & $\times$ & $\times$ & N/A & $\times$ & 110M & 16 TPU-days \\
-        \hline
         Longformer & $\checkmark$ & $\times$ & $\times$ & $\checkmark$ & $\times$ & N/A & $\times$ & 149M & 24 TPU-days \\
-        \hline
         Switch Trans. & $\times$ & $\checkmark$ & $\times$ & $\times$ & $\times$ & $\checkmark$ & $\times$ & 1.6B & 128 TPU-days \\
-        \hline
         LayoutLMv2 & $\times$ & $\times$ & $\checkmark$ & $\times$ & $\checkmark$ & N/A & $\times$ & 426M & 64 TPU-days \\
-        \hline
+        \midrule
         \textbf{Ours} & $\checkmark$ & $\checkmark$ & $\checkmark$ & $\checkmark$ & $\checkmark$ & $\checkmark$ & $\checkmark$ & 380M & 48 A100-days \\
-        \hline
+        \bottomrule
     \end{tabular}
 \end{table}
 
@@ -163,24 +162,22 @@ $g(s_i) = \text{TopK}(\text{softmax}(W_r \cdot \text{pool}(s_i) + b_r), k)$.
 
 \section{Experiments}
 
+Table~\ref{tab:comparison} summarizes the capabilities of different approaches, while Table~\ref{tab:main_results} presents our main quantitative results.
+
 \begin{table}[H]
-    \caption{Main results. Best in \textbf{bold}, second best \underline{underlined}.}
+    \caption{Main results on document understanding benchmarks. Our model (top-2 routing) achieves state-of-the-art performance across all metrics while using only 1.2 TFLOPs, demonstrating the efficiency of structure-aware sparse routing. Best in \textbf{bold}, second best \underline{underlined}.}
     \label{tab:main_results}
-    \noindent
-    \begin{tabular}{l|c|c|c|c|c|c|c|c}
-        \hline
-        Model & DocQA F1 & DocQA EM & NLI Acc & NLI F1 & ROUGE-1 & ROUGE-L & Struct EM & FLOPs (T) \\
-        \hline\hline
+    \centering
+    \begin{tabular}{lcccccccc}
+        \toprule
+        Model & DocQA F1 (\%) & DocQA EM (\%) & NLI Acc (\%) & NLI F1 (\%) & ROUGE-1 & ROUGE-L & Struct EM (\%) & FLOPs (T) \\
+        \midrule
         BERT-base & 62.3 & 54.1 & 71.8 & 70.2 & 32.1 & 28.4 & 41.2 & 0.8 \\
-        \hline
         Longformer & 68.7 & 61.3 & 76.4 & 74.9 & 36.8 & 33.1 & 48.7 & 2.1 \\
-        \hline
         Switch-base & 71.2 & 64.5 & 79.3 & 78.1 & 39.4 & 36.2 & 52.8 & 1.4 \\
-        \hline
         Ours (top-1) & \underline{78.4} & \underline{72.1} & \underline{84.7} & \underline{83.2} & \underline{43.1} & \underline{40.3} & \underline{61.4} & \underline{0.9} \\
-        \hline
         Ours (top-2) & \textbf{82.5} & \textbf{76.8} & \textbf{87.1} & \textbf{86.3} & \textbf{45.8} & \textbf{43.2} & \textbf{64.7} & 1.2 \\
-        \hline
+        \bottomrule
     \end{tabular}
 \end{table}
 
@@ -191,20 +188,16 @@ confirms that structure-aware routing is the most critical component ($-8.2$ F1)
     \caption{Ablation study on DocQA.}
     \label{tab:ablation}
     \centering
-    \begin{tabular}{l|c|c}
-        \hline
-        Configuration & F1 & $\Delta$ \\
-        \hline\hline
+    \begin{tabular}{lcc}
+        \toprule
+        Configuration & F1 (\%) & $\Delta$ \\
+        \midrule
         Full model & 82.5 & — \\
-        \hline
-        w/o structure routing & 74.3 & -8.2 \\
-        \hline
-        w/o load balancing & 79.1 & -3.4 \\
-        \hline
-        w/o local attention & 76.8 & -5.7 \\
-        \hline
-        Uniform routing & 71.6 & -10.9 \\
-        \hline
+        w/o structure routing & 74.3 & $-8.2$ \\
+        w/o load balancing & 79.1 & $-3.4$ \\
+        w/o local attention & 76.8 & $-5.7$ \\
+        Uniform routing & 71.6 & $-10.9$ \\
+        \bottomrule
     \end{tabular}
 \end{table}
 

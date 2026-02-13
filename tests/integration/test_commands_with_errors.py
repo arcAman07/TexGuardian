@@ -23,13 +23,13 @@ TEST_BIB = TEST_DIR / "references_test.bib"
 class MockLLMClient:
     """Mock LLM client for testing."""
 
-    async def complete(self, messages, max_tokens=2000, temperature=0.3):
+    async def complete(self, messages, system=None, max_tokens=2000, temperature=0.3):
         """Return mock response."""
         response = MagicMock()
         response.content = "Mock LLM response for testing"
         return response
 
-    async def complete_with_vision(self, messages, images, max_tokens=2000, temperature=0.3):
+    async def complete_with_vision(self, messages, images, system=None, max_tokens=2000, temperature=0.3):
         """Return mock vision response."""
         response = MagicMock()
         response.content = '{"quality_score": 85, "issues": [], "patches": [], "summary": "Test"}'

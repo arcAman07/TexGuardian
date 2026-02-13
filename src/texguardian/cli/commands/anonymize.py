@@ -407,12 +407,14 @@ class AnonymizeCommand(Command):
             numbered_content=numbered,
         )
 
+        from texguardian.llm.prompts.system import COMMAND_SYSTEM_PROMPT
         from texguardian.llm.streaming import stream_llm
 
         response_text = await stream_llm(
             session.llm_client,
             messages=[{"role": "user", "content": prompt}],
             console=console,
+            system=COMMAND_SYSTEM_PROMPT,
             max_tokens=4000,
             temperature=0.3,
         )

@@ -59,10 +59,6 @@ class ReportCommand(Command):
         # ========================================================================
         # Build rich output
         # ========================================================================
-        report_lines: list[str] = [
-            f"# TexGuardian Report — {paper_title}",
-            f"Generated: {timestamp}",
-        ]
 
         # --- Status Overview (table) ---------------------------------------------
         overview_table = Table(

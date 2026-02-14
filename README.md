@@ -29,7 +29,7 @@
 ---
 
 <p align="center">
-  <img src="docs/assets/release_animation.gif" alt="TexGuardian demo" width="800">
+  <img src="https://raw.githubusercontent.com/arcAman07/TexGuardian/main/docs/assets/release_animation.gif" alt="TexGuardian demo" width="800">
 </p>
 
 TexGuardian is a **researcher-focused** interactive CLI that helps you write, verify, and polish LaTeX academic papers for conference submission. Think of it as **Claude Code, but for LaTeX** — it reads your entire `.tex` and `.bib` files, understands venue requirements, and fixes issues through reviewable unified diff patches with checkpoint safety.

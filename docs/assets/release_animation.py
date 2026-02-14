@@ -98,22 +98,36 @@ class TexGuardianRelease(Scene):
 
         anchor = term_bg.get_corner(UL) + RIGHT * 0.4 + DOWN * 0.55
 
-        # Welcome panel
-        wp = self._panel([
-            [("TexGuardian", WHITE_T, True)],
-            None,
-            [("  Paper  ", GRAY),
-             ("Scaling Sparse MoE for Long-Context...", LIGHT)],
-            [("  Venue  ", GRAY), ("ICLR 2026", BLUE),
-             ("    Deadline  ", GRAY), ("2026-01-23", LIGHT)],
-            [("  Model  ", GRAY), ("claude opus 4.5", LIGHT),
-             ("   Provider  ", GRAY), ("bedrock", LIGHT)],
-            [("  File   ", GRAY), ("demo_paper.tex", LIGHT),
-             ("    Figures ", GRAY), ("2", LIGHT),
-             (" · Tables ", GRAY), ("3", LIGHT)],
-            None,
-            [("  Type /help for commands or ask a question.", GRAY)],
-        ])
+        # Welcome panel — use Tex rendering for the panel content
+        wp_lines = [
+            "TexGuardian",
+            "",
+            "Paper:  Scaling Sparse MoE for Long-Context...",
+            "Venue:  ICLR 2026    Deadline:  2026-01-23",
+            "Model:  claude opus 4.5    Provider:  bedrock",
+            "File:   demo_paper.tex    Figures: 2  Tables: 3",
+            "",
+            "Type /help for commands or ask a question.",
+        ]
+        wp_rows = VGroup()
+        for i, line in enumerate(wp_lines):
+            if not line:
+                wp_rows.add(Dot(radius=0.001, fill_opacity=0))
+                continue
+            kw = {"font": MONO, "font_size": FS, "color": LIGHT}
+            if i == 0:
+                kw.update(color=WHITE_T, weight=BOLD)
+            elif i == len(wp_lines) - 1:
+                kw.update(color=GRAY)
+            wp_rows.add(Text(line, **kw))
+        wp_rows.arrange(DOWN, buff=0.1, aligned_edge=LEFT)
+        wp_border = RoundedRectangle(
+            corner_radius=0.12,
+            width=wp_rows.width + 0.7, height=wp_rows.height + 0.55,
+            stroke_color=GRAY, stroke_width=1.5, fill_opacity=0,
+        )
+        wp_border.move_to(wp_rows)
+        wp = VGroup(wp_border, wp_rows)
         wp.move_to(term_bg.get_center())
         self.play(FadeIn(wp, scale=0.95), run_time=0.5)
         self.wait(2.5)
@@ -281,7 +295,7 @@ class TexGuardianRelease(Scene):
         summary = self._summary_table()
         summary.move_to(term_bg.get_center())
         self.play(FadeIn(summary, scale=0.95), run_time=0.5)
-        self.wait(5.0)
+        self.wait(3.5)
 
         # ═══════════════════════════════════════════════
         # Phase 7 — Feature badges (40–46s)
@@ -293,8 +307,8 @@ class TexGuardianRelease(Scene):
             ("Autonomous Review", VIOLET),
             ("Visual Polish Loop", CYAN),
             ("Citation Check + Suggest", GREEN),
-            ("Claude Code-like UI", PURPLE),
-            ("14 Venue Templates", PINK),
+            ("Natural Paper Assistant", PURPLE),
+            ("Detailed Feedback Report", PINK),
         ]
         badges = VGroup(*[self._badge(l, c) for l, c in features])
         badges.arrange_in_grid(rows=2, cols=3, buff=(0.35, 0.3))
@@ -377,7 +391,7 @@ class TexGuardianRelease(Scene):
                     parts.append(Text(
                         txt, font=MONO, font_size=FS_SM, color=col,
                     ))
-            rows.add(VGroup(*parts).arrange(RIGHT, buff=0.15))
+            rows.add(VGroup(*parts).arrange(RIGHT, buff=0.06))
         rows.arrange(DOWN, buff=0.1, aligned_edge=LEFT)
 
         border = RoundedRectangle(
@@ -466,12 +480,12 @@ class TexGuardianRelease(Scene):
     def _badge(self, label, color):
         """Rounded pill badge with label."""
         txt = Text(
-            label, font=SANS, font_size=24,
+            label, font=SANS, font_size=20,
             color=WHITE, weight=BOLD,
         )
         bg = RoundedRectangle(
             corner_radius=0.14,
-            width=txt.width + 0.6, height=txt.height + 0.45,
+            width=txt.width + 0.5, height=txt.height + 0.4,
             fill_color=color, fill_opacity=0.9, stroke_width=0,
         )
         return VGroup(bg, txt)

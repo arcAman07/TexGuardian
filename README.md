@@ -7,7 +7,7 @@
 </p>
 
 <p align="center">
-  <strong>Claude Code, but for LaTeX academic papers</strong>
+  <strong>AI-powered terminal assistant for LaTeX academic papers</strong>
 </p>
 
 <p align="center">
@@ -32,37 +32,20 @@
   <img src="docs/assets/release_animation.gif" alt="TexGuardian demo" width="800">
 </p>
 
-## The Problem
+TexGuardian is a **researcher-focused** interactive CLI tool that helps you write, verify, and polish LaTeX academic papers for conference submission. Think of it as **Claude Code, but for LaTeX** — it reads your paper, understands venue requirements, and fixes issues through reviewable diff patches with checkpoint safety.
 
-Every conference deadline, the same painful ritual repeats. Your figure overflows the margin at `width=1.4\columnwidth`. You used bare `\cite{}` instead of `\citep{}` — 47 times. Three TODO markers are still in the paper. The bibliography has a hallucinated reference your co-author added from ChatGPT. You forgot to anonymize the acknowledgments section. And it's 2 AM.
-
-You've spent more time fighting LaTeX formatting than writing the actual research.
-
-## The Solution
-
-**TexGuardian** is an interactive CLI that reads your entire paper, understands venue requirements, and fixes every issue through reviewable diff patches — so you never lose work.
-
-One command audits your entire paper:
-
-```
-texguardian chat
->>> /review full
-```
-
-It runs a **7-step pipeline**: compile → verify → fix → validate citations → analyze figures → analyze tables → visual polish. Every edit is shown as a unified diff you approve before it touches your files. Automatic checkpoints mean you can always roll back.
-
-Think of it as **Claude Code, but for LaTeX**.
+Whether you're preparing a NeurIPS submission, fixing figure overflows, anonymizing for double-blind review, or validating citations against real databases — TexGuardian handles the tedious parts so you can focus on the research.
 
 ## Highlights
 
-- **26 slash commands** covering every stage of paper preparation
+- **Styled REPL** — bordered welcome panel with paper stats, colored `❯` prompt
+- **26 slash commands** for every stage of paper preparation
 - **LLM-powered fixes** — figures, tables, citations, sections, anonymization, camera-ready
-- **Real citation validation** — checks your `.bib` against CrossRef and Semantic Scholar, catches hallucinated and outdated references
-- **Visual polish loop** — renders your PDF to images, sends pages to a vision model, catches overlapping figures and spacing issues text analysis misses
-- **Unified diff patches** — every edit is reviewable, with checkpoints and instant rollback
-- **Natural language** — ask for anything in plain English, or use slash commands
-- **14 venue templates** — NeurIPS, ICML, ICLR, AAAI, CVPR, ACL, ECCV, and more
-- **Two LLM providers** — AWS Bedrock or OpenRouter, switch with one command
+- **Instant verification** — regex-based checks run directly on `.tex` files, no compilation needed
+- **Unified diff patches** — every edit is reviewable, with checkpoints and rollback
+- **Visual polish loop** — renders PDF, sends pages to vision model, fixes layout issues
+- **Natural language** — ask for anything in plain English, the LLM figures out the rest
+- **Two providers** — AWS Bedrock or OpenRouter, switch with one command
 
 ## Installation
 

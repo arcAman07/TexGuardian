@@ -15,7 +15,7 @@
   <a href="#quick-start">Quick Start</a> &middot;
   <a href="#commands">Commands</a> &middot;
   <a href="#configuration">Configuration</a> &middot;
-  <a href="docs/ARCHITECTURE.md">Architecture</a>
+  <a href="docs/GUIDE.md">Guide</a>
 </p>
 
 <p align="center">
@@ -421,7 +421,7 @@ ruff check src/
 mypy src/texguardian
 ```
 
-See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the full architecture and project layout.
+See [docs/GUIDE.md](docs/GUIDE.md) for the full architecture and project layout.
 
 ## License
 

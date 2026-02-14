@@ -29,11 +29,11 @@ TERM_BG = "#0D1117"
 TERM_BORDER = "#30363D"
 TERM_BAR_BG = "#161B22"
 
-MONO = "Courier New"
+MONO = "JetBrains Mono"
 SANS = "Helvetica Neue"
-FS = 14       # terminal font size
-FS_SM = 13    # small terminal text
-LH = 0.25    # line height
+FS = 16       # terminal font size
+FS_SM = 15    # small terminal text
+LH = 0.28    # line height
 
 
 class TexGuardianRelease(Scene):
@@ -88,7 +88,7 @@ class TexGuardianRelease(Scene):
         ).arrange(RIGHT, buff=0.12)
         dots.move_to(term_bar.get_left() + RIGHT * 0.5)
         bar_title = Text(
-            "texguardian chat", font=MONO, font_size=12, color=GRAY,
+            "texguardian chat", font=MONO, font_size=14, color=GRAY,
         )
         bar_title.move_to(term_bar)
 
@@ -330,7 +330,7 @@ class TexGuardianRelease(Scene):
 
         cmd = Text(
             "pip install texguardian",
-            font=MONO, font_size=34, color=WHITE,
+            font=MONO, font_size=38, color=WHITE,
         )
         cmd_bg = RoundedRectangle(
             corner_radius=0.15,
@@ -342,13 +342,13 @@ class TexGuardianRelease(Scene):
 
         gh = Text(
             "github.com/arcAman07/TexGuardian",
-            font=MONO, font_size=22, color=GRAY,
+            font=MONO, font_size=24, color=GRAY,
         )
         gh.next_to(install, DOWN, buff=0.5)
 
         oss = Text(
             "MIT Licensed · Free & Open Source",
-            font=SANS, font_size=20, color=GRAY,
+            font=SANS, font_size=22, color=GRAY,
         )
         oss.next_to(gh, DOWN, buff=0.35)
 
@@ -406,7 +406,7 @@ class TexGuardianRelease(Scene):
     def _summary_table(self):
         """Review summary table with score box."""
         title = Text(
-            "Review Summary", font=MONO, font_size=FS + 4,
+            "Review Summary", font=MONO, font_size=FS + 2,
             color=WHITE_T, weight=BOLD,
         )
 

@@ -32,9 +32,18 @@
   <img src="docs/assets/release_animation.gif" alt="TexGuardian demo" width="800">
 </p>
 
-TexGuardian is a **researcher-focused** interactive CLI tool that helps you write, verify, and polish LaTeX academic papers for conference submission. Think of it as **Claude Code, but for LaTeX** — it reads your paper, understands venue requirements, and fixes issues through reviewable diff patches with checkpoint safety.
+TexGuardian is a **researcher-focused** interactive CLI tool that helps you write, verify, and polish LaTeX academic papers for conference submission. Think of it as **Claude Code, but for LaTeX** — it reads your entire `.tex` and `.bib` files, understands venue requirements, and fixes every issue through reviewable unified diff patches with checkpoint safety.
 
-Whether you're preparing a NeurIPS submission, fixing figure overflows, anonymizing for double-blind review, or validating citations against real databases — TexGuardian handles the tedious parts so you can focus on the research.
+One command runs a full audit of your paper:
+
+```
+texguardian chat
+>>> /review full
+```
+
+This kicks off a **7-step pipeline**: compile → verify → fix → validate citations → analyze figures → analyze tables → visual polish. Every edit is shown as a diff you approve before it touches your files. Automatic checkpoints mean you can always roll back.
+
+Whether you're preparing a NeurIPS submission, fixing figure overflows at `width=1.4\columnwidth`, anonymizing for double-blind review, hunting down TODO markers at 2 AM, or validating citations against CrossRef and Semantic Scholar to catch hallucinated references — TexGuardian handles the tedious parts so you can focus on the research.
 
 ## Highlights
 

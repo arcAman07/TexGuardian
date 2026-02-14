@@ -163,8 +163,10 @@ idea.md
 /paper_spec.md
 EXAMPLES_README.md
 
-# Demo test_run working directory (checkpoints, history)
+# Demo test_run working directory (checkpoints, history, downloaded templates)
 demo/test_run/.texguardian/
+demo/test_run/*.sty
+demo/test_run/*.bst
 
 # Backup files
 *.backup
@@ -211,6 +213,12 @@ LAUNCH_PLAN.md
 # -----------------------
 launch_demo/
 user_demo/
+examples/
+SOCIAL_MEDIA_LAUNCH.md
+
+# Manim render cache (intermediate files)
+docs/assets/media/
+media/
 
 # -----------------------
 # Misc

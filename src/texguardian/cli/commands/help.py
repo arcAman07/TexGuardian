@@ -22,7 +22,7 @@ class HelpCommand(Command):
     description = "Show available commands"
     aliases = ["h", "?"]
 
-    def __init__(self, registry: CommandRegistry):
+    def __init__(self, registry: CommandRegistry | None = None):
         self.registry = registry
 
     async def execute(
@@ -32,6 +32,10 @@ class HelpCommand(Command):
         console: Console,
     ) -> None:
         """Execute the help command."""
+        if not self.registry:
+            console.print("[yellow]Command registry not available. Type /exit to quit.[/yellow]")
+            return
+
         if args:
             # Show help for specific command
             cmd = self.registry.get_command(args)

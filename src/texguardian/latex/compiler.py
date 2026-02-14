@@ -171,6 +171,13 @@ class LatexCompiler:
                     if not warnings:
                         warnings = self._extract_warnings(log_text)
 
+            # Last resort: if we still have no parseable errors but the
+            # process returned non-zero, synthesize an error from the raw
+            # output so the user is never shown "compilation failed" with
+            # an empty error list.
+            if not errors and result.returncode != 0:
+                errors = self._fallback_errors(log_output, result.returncode)
+
             # Check for PDF
             pdf_name = main_tex.stem + ".pdf"
             pdf_path = output_dir / pdf_name
@@ -237,6 +244,50 @@ class LatexCompiler:
             i += 1
 
         return errors[:20]  # Limit to first 20
+
+    @staticmethod
+    def _fallback_errors(log_output: str, returncode: int) -> list[str]:
+        """Synthesize error messages when ``_extract_errors`` finds nothing.
+
+        Scans the raw log output for lines that look like errors (containing
+        keywords like "error", "fatal", "not found", "missing") and returns
+        up to 10 of them.  If even that yields nothing, returns a generic
+        message with the exit code.
+        """
+        error_keywords = re.compile(
+            r"(?:error|fatal|not found|missing|undefined|"
+            r"emergency stop|no such file|cannot \\(read|open))",
+            re.IGNORECASE,
+        )
+        fallback: list[str] = []
+        for line in log_output.splitlines():
+            stripped = line.strip()
+            if not stripped:
+                continue
+            if error_keywords.search(stripped):
+                # Skip noisy "see the transcript" / "output written" lines
+                if "see the transcript" in stripped.lower():
+                    continue
+                fallback.append(stripped)
+                if len(fallback) >= 10:
+                    break
+
+        if fallback:
+            return fallback
+
+        # Absolute last resort — show the last 5 non-empty lines
+        tail = [
+            ln.strip()
+            for ln in log_output.splitlines()
+            if ln.strip()
+        ][-5:]
+        if tail:
+            return [
+                f"Compilation failed (exit code {returncode}). Last output lines:",
+                *tail,
+            ]
+
+        return [f"Compilation failed with exit code {returncode} (no log output captured)"]
 
     def _extract_warnings(self, log: str) -> list[str]:
         """Extract warning messages from log.

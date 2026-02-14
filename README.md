@@ -28,6 +28,10 @@
 
 ---
 
+<p align="center">
+  <img src="docs/assets/release_animation.gif" alt="TexGuardian demo" width="800">
+</p>
+
 TexGuardian is a **researcher-focused** interactive CLI tool that helps you write, verify, and polish LaTeX academic papers for conference submission. Think of it as **Claude Code, but for LaTeX** — it reads your paper, understands venue requirements, and fixes issues through reviewable diff patches with checkpoint safety.
 
 Whether you're preparing a NeurIPS submission, fixing figure overflows, anonymizing for double-blind review, or validating citations against real databases — TexGuardian handles the tedious parts so you can focus on the research.

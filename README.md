@@ -32,11 +32,11 @@
   <img src="docs/assets/release_animation.gif" alt="TexGuardian demo" width="800">
 </p>
 
-Every conference deadline, researchers lose hours to the same problems. Figures overflow margins at `width=1.4\columnwidth`. Citation formats are wrong — bare `\cite{}` instead of `\citep{}`, dozens of times. TODO and FIXME markers are still in the paper. A co-author added a reference from ChatGPT that doesn't actually exist. The acknowledgments section isn't anonymized for double-blind review. Tables use `\hline` instead of booktabs. And none of this is the actual research.
+TexGuardian is a **researcher-focused** interactive CLI that helps you write, verify, and polish LaTeX academic papers for conference submission. Think of it as **Claude Code, but for LaTeX** — it reads your entire `.tex` and `.bib` files, understands venue requirements, and fixes issues through reviewable unified diff patches with checkpoint safety.
 
-TexGuardian is an interactive CLI that fixes all of this. It reads your entire `.tex` and `.bib` files, understands venue-specific requirements, and fixes issues through reviewable unified diff patches — so you always see exactly what changes before anything touches your files. Checkpoints before every modification mean you can always roll back.
+It runs a **7-step review pipeline** in a single command: compile your paper, run verification checks, fix issues with LLM-generated patches, validate citations against CrossRef and Semantic Scholar, analyze figures and tables, and run a visual polish loop that renders your PDF and sends pages to a vision model to catch layout problems text analysis can't see. Every edit is shown as a diff you approve. Automatic checkpoints mean you can always roll back.
 
-Think of it as **Claude Code, but for LaTeX academic papers**. 26 slash commands covering verification, LLM-powered fixes, citation validation against CrossRef and Semantic Scholar, visual layout analysis with a vision model, anonymization, camera-ready conversion, and more. Or just describe what you want in plain English.
+Whether you're preparing a NeurIPS submission, anonymizing for double-blind review, converting to camera-ready, or validating that every citation in your bibliography actually exists — TexGuardian handles the tedious parts so you can focus on the research.
 
 ## Highlights
 

@@ -32,18 +32,11 @@
   <img src="docs/assets/release_animation.gif" alt="TexGuardian demo" width="800">
 </p>
 
-TexGuardian is a **researcher-focused** interactive CLI tool that helps you write, verify, and polish LaTeX academic papers for conference submission. Think of it as **Claude Code, but for LaTeX** — it reads your entire `.tex` and `.bib` files, understands venue requirements, and fixes every issue through reviewable unified diff patches with checkpoint safety.
+Every conference deadline, researchers lose hours to the same problems. Figures overflow margins at `width=1.4\columnwidth`. Citation formats are wrong — bare `\cite{}` instead of `\citep{}`, dozens of times. TODO and FIXME markers are still in the paper. A co-author added a reference from ChatGPT that doesn't actually exist. The acknowledgments section isn't anonymized for double-blind review. Tables use `\hline` instead of booktabs. And none of this is the actual research.
 
-One command runs a full audit of your paper:
+TexGuardian is an interactive CLI that fixes all of this. It reads your entire `.tex` and `.bib` files, understands venue-specific requirements, and fixes issues through reviewable unified diff patches — so you always see exactly what changes before anything touches your files. Checkpoints before every modification mean you can always roll back.
 
-```
-texguardian chat
->>> /review full
-```
-
-This kicks off a **7-step pipeline**: compile → verify → fix → validate citations → analyze figures → analyze tables → visual polish. Every edit is shown as a diff you approve before it touches your files. Automatic checkpoints mean you can always roll back.
-
-Whether you're preparing a NeurIPS submission, fixing figure overflows at `width=1.4\columnwidth`, anonymizing for double-blind review, hunting down TODO markers at 2 AM, or validating citations against CrossRef and Semantic Scholar to catch hallucinated references — TexGuardian handles the tedious parts so you can focus on the research.
+Think of it as **Claude Code, but for LaTeX academic papers**. 26 slash commands covering verification, LLM-powered fixes, citation validation against CrossRef and Semantic Scholar, visual layout analysis with a vision model, anonymization, camera-ready conversion, and more. Or just describe what you want in plain English.
 
 ## Highlights
 
